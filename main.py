@@ -6,9 +6,9 @@ Aauthor: D-one
 # Streamlit
 
 import streamlit as st
-from p_explore import p_explore
-from p_fitting import p_fitting
-from p_introduction import p_introduction
+from DoneStorage.p_explore import p_explore
+from DoneStorage.p_fitting import p_fitting
+from DoneStorage.p_introduction import p_introduction
 
 import numpy as np
 
