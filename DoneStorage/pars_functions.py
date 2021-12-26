@@ -2,26 +2,48 @@ import json
 from bs4 import BeautifulSoup
 import requests
 import string
+from scipy import stats
+from six.moves import urllib
 
-def parse_symbol_nyse():
-# Загрузка текущего списка тикеров NYSE c сайта eoddata.
-# вернет:
-#   df с тикерами NYSE.
+def dis_button_names():
+    names = []
+    for i, name in enumerate(sorted(stats._distr_params.distcont)):
+        if i == 87:
+            pass
+        else:
+            names.append(str(name[0]))
+    return names
 
-    alpha = list(string.ascii_uppercase)
-    symbols = []
-    for each in alpha:
-        url = 'http://eoddata.com/stocklist/NYSE/{}.htm'.format(each)
-        resp = requests.get(url)
-        site = resp.content
-        soup = BeautifulSoup(site, 'html.parser')
-        table = soup.find('table', {'class': 'quotes'})
-        for row in table.findAll('tr')[1:]:
-            symbols.append(row.findAll('td')[0].text.rstrip())
-    symbols_clean = []
-    for each in symbols:
-        each = each.replace('.', '-')
-        symbols_clean.append((each.split('-')[0]))
-    symbols_clean = list(dict.fromkeys(symbols_clean))
-    symbol_df = pd.DataFrame({'Symbol':symbols_clean})
-    return symbol_df
+def dis_url_names():
+    url_names = []
+    for i, name in enumerate(sorted(stats._distr_params.distcont)):
+        if i == 87:
+            pass
+        else:
+            url = 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.' + str(name[0]) + '.html#scipy.stats.' + str(name[0])
+            url_names.append(url)
+    return url_names
+
+def dis_functions():
+    functions = []
+    url_names = []
+    for i, name in enumerate(sorted(stats._distr_params.distcont)):
+        if i == 87:
+            pass
+        else:
+            url = 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.' + str(name[0]) + '.html#scipy.stats.' + str(name[0])
+            url_names.append(url)
+    for idx, i in enumerate(url_names):
+        if idx == 87:
+            print(' \[f(x, a, b) = \frac{1}{ \left(x*log( \frac{b}{a} \right) }')
+        else:
+            html_doc = urllib.request.urlopen(i).read()
+            soup = BeautifulSoup(html_doc, 'html.parser')
+            divTag = soup.find_all("div", class_="math notranslate nohighlight")
+            for tag in divTag:
+                functions.append(tag.text)
+    return functions
+
+x = dis_button_names()
+y = dis_url_names()
+b = dis_functions()
