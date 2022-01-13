@@ -62,6 +62,16 @@ def dis_parameters_name():
             all_params_names.append(['loc', 'scale'])
     return all_params_names
 
+def stats_name():
+    stats_names = []
+    for i, name in enumerate(sorted(stats._distr_params.distcont)):
+        if i == 87:
+            pass
+        else:
+            url = 'stats.' + str(name[0])
+            stats_names.append(url)
+    return stats_names
+
 def doc_name():
     doc_names = []
     for i, name in enumerate(sorted(stats._distr_params.distcont)):
@@ -71,6 +81,12 @@ def doc_name():
             url = 'stats.' + str(name[0]) + ('.__doc__')
             doc_names.append(url)
     return doc_names
+
+def stats_dictionaries():
+    stats = stats_name()
+    distribution_names = dis_button_names()
+    stats_dictionaries = {distribution: stats[i] for i, distribution in enumerate(distribution_names)}
+    return stats_dictionaries
 
 def doc_dictionaries():
     doc = doc_name()

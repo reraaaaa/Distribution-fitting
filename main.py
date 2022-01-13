@@ -14,13 +14,11 @@ import numpy as np
 
 np.random.seed(1)
 
-st.set_page_config(page_title='DistributionFitting')
+st.set_page_config(page_title='Distribution-Fitting')
 
 logo, name = st.sidebar.columns(2)
 with logo:
-    image = "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.scribbr.com%2Fstatistics%2Fstandard-normal" \
-            "-distribution%2F&psig=AOvVaw1BIc7bWIQjSDoTjpj3DEqI&ust=1640472586303000&source=images&cd=vfe&ved" \
-            "=0CAsQjRxqFwoTCIiq6OLC_fQCFQAAAAAdAAAAABAD "
+    image = "https://raw.githubusercontent.com/reraaaaa/Distribution-fitting/master/images/logo_w.png?token=GHSAT0AAAAAABQQROWMSV5LDKAYXT4KAEYAYO7CYJQ"
     st.image(image, use_column_width=True)
 with name:
     st.markdown("<h1 style='text-align: left; color: grey;'> \
@@ -35,7 +33,7 @@ def main():
         "База распределений": p_explore,
         "Подбор закона распределения": p_fitting,
     }
-    st.sidebar.title("Main options")
+    st.sidebar.title("Основные параметры")
     # Кнопки
 
     page = st.sidebar.radio("Выбор:", tuple(pages.keys()))
