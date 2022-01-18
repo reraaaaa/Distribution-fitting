@@ -15,4 +15,4 @@ import base64
 from pars_functions import (dis_button_names,stats_dictionaries)
 
 def p_explore():
-    return None
+    return
