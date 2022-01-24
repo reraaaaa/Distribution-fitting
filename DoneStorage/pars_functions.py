@@ -5,7 +5,21 @@ import string
 from scipy import stats
 from six.moves import urllib
 
+def dis_name():
+# ['Alpha Distribution', 'Anglit Distribution', ...]
+    dis_name = []
+    url_names = 'https://docs.scipy.org/doc/scipy/tutorial/stats/continuous.html'
+    get_url = requests.get(url_names)
+    get_text = get_url.text
+    soup = BeautifulSoup(get_text,"html.parser")
+    x = soup.find("div",dict(id="continuous-distributions-in-scipy-stats"))
+    categories = x.find_all('li', {'class':'toctree-l1'})
+    for x in categories:
+        dis_name.append(x.text)
+    return dis_name
+
 def dis_button_names():
+# ['alpha', 'anglit', 'arcsine', ...]
     names = []
     for i, name in enumerate(sorted(stats._distr_params.distcont)):
         if i == 87:
@@ -15,6 +29,7 @@ def dis_button_names():
     return names
 
 def dis_url_names():
+# ['https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.alpha.html#scipy.stats.alpha'...]
     url_names = []
     for i, name in enumerate(sorted(stats._distr_params.distcont)):
         if i == 87:
@@ -25,6 +40,8 @@ def dis_url_names():
     return url_names
 
 def dis_functions():
+# '\n\\[f(x, a) = \\frac{1}{x^2 \\Phi(a) \\sqrt{2\\pi}} *\n
+# \\exp(-\\frac{1}{2} (a-1/x)^2)\\]', '\n\\[f(x) = \\sin(2x + \\pi/2) = \\cos(2x)\\]'
     functions = []
     url_names = dis_url_names()
     for idx, i in enumerate(url_names):
@@ -39,6 +56,7 @@ def dis_functions():
     return functions
 
 def dis_parameters():
+# [[3.570477051665046, 0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [1.0, 0.0, 1.0],...]
     all_params = []
     names = []
     for name, params in sorted(stats._distr_params.distcont):
@@ -49,7 +67,7 @@ def dis_parameters():
     return all_params
 
 def dis_parameters_name():
-
+# [['a', 'loc', 'scale'], ['loc', 'scale'],...]
     all_params_names = []
 
     for name, params in sorted(stats._distr_params.distcont):
@@ -63,6 +81,7 @@ def dis_parameters_name():
     return all_params_names
 
 def stats_name():
+# ['stats.alpha', 'stats.anglit', 'stats.arcsine',...]
     stats_names = []
     for i, name in enumerate(sorted(stats._distr_params.distcont)):
         if i == 87:
@@ -73,6 +92,7 @@ def stats_name():
     return stats_names
 
 def doc_name():
+# ['stats.alpha.__doc__', 'stats.anglit.__doc__',...]
     doc_names = []
     for i, name in enumerate(sorted(stats._distr_params.distcont)):
         if i == 87:
@@ -83,27 +103,55 @@ def doc_name():
     return doc_names
 
 def stats_dictionaries():
+# {'alpha': 'stats.alpha', 'anglit': 'stats.anglit',...}
     stats = stats_name()
     distribution_names = dis_button_names()
     stats_dictionaries = {distribution: stats[i] for i, distribution in enumerate(distribution_names)}
     return stats_dictionaries
 
 def doc_dictionaries():
+# {'alpha': 'stats.alpha.__doc__', 'anglit': 'stats.anglit.__doc__',...}
     doc = doc_name()
     distribution_names = dis_button_names()
     doc_dictionaries = {distribution: doc[i] for i, distribution in enumerate(distribution_names)}
     return doc_dictionaries
 
 def functions_dictionaries():
+# {'alpha': '\n\\[f(x, a) = \\frac{1}{x^2 \\Phi(a) \\sqrt{2\\pi}} *\n
+# \\exp(-\\frac{1}{2} (a-1/x)^2)\\]',...}
     functions = dis_functions()
     distribution_names = dis_button_names()
     func_dictionaries = {distribution: functions[i] for i, distribution in enumerate(distribution_names)}
     return func_dictionaries
 
 def parameters_dictionaries():
+# {'alpha': {'a': '3.57', 'loc': '0.00', 'scale': '1.00'},...}
     names = dis_button_names()
     all_params_names = dis_parameters_name()
     all_params = dis_parameters()
     all_dist_params_dict = {function: {param: f"{all_params[i][j]:.2f}" for j, param in enumerate(all_params_names[i])}
                             for i, function in enumerate(names)}
     return all_dist_params_dict
+
+
+"""""
+def url_dictionaries():
+
+    url_dictionaries = {distribution: [dis_url_names()[i], scipy_distribution_proper_names()[i]] for i, distribution in enumerate(distr_selectbox_names())}
+
+    return url_dictionaries
+"""""
+a = dis_button_names()
+b = dis_url_names()
+c = dis_functions()
+v = dis_parameters()
+n = dis_parameters_name()
+m = stats_name()
+o = doc_name()
+f = stats_dictionaries()
+r = functions_dictionaries()
+l = parameters_dictionaries()
+g = dis_good_name()
+
+
+
