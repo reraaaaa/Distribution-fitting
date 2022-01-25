@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import requests
 import string
 from scipy import stats
+import re
 from six.moves import urllib
 
 
@@ -35,13 +36,12 @@ def dis_hrefname():
     return dis_hrefname
 
 
-def dis_n():
-    dis_n = []
-    dis_hrefname = dis_hrefname()
+def dis_name(dis_hrefname):
+    dis_name = []
     for i in dis_hrefname:
-        i.replace('continuous_', '.html', regex=True)
-        dis_n.append(i.text)
-    return dis_n
+        f = i.replace('.html', '').replace('continuous_', '')
+        dis_name.append(f)
+    return dis_name
 
 
 def dis_button_names():
@@ -178,7 +178,7 @@ def url_dictionaries():
 
     return url_dictionaries
 """""
-a = dis_hrefname()
+dis_hrefname = dis_hrefname()
 b = dis_fullname()
 c = dis_button_names()
-r = dis_n()
+r = dis_name(dis_hrefname)
