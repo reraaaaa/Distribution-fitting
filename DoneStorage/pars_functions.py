@@ -1,70 +1,58 @@
-import json
 from bs4 import BeautifulSoup
 import requests
-import string
 from scipy import stats
-import re
-from six.moves import urllib
+import pandas as pd
 
 
 def dis_fullname():
     # ['Alpha Distribution', 'Anglit Distribution', ...]
-    dis_fullname = []
-    url_names = 'https://docs.scipy.org/doc/scipy/tutorial/stats/continuous.html'
-    get_url = requests.get(url_names)
+    # 15 - erland distribution нет функции
+    fullname = []
+    url = 'https://docs.scipy.org/doc/scipy/tutorial/stats/continuous.html'
+    get_url = requests.get(url)
     get_text = get_url.text
     soup = BeautifulSoup(get_text, "html.parser")
-    x = soup.find("div", dict(id="continuous-distributions-in-scipy-stats"))
-    categories = x.find_all('li', {'class': 'toctree-l1'})
-    for x in categories:
-        dis_fullname.append(x.text)
-    return dis_fullname
+    div = soup.find("div", dict(id="continuous-distributions-in-scipy-stats"))
+    categories = div.find_all('li', {'class': 'toctree-l1'})
+    for i in categories:
+        fullname.append(i.text)
+    fullname.pop(15)
+    return fullname
 
 
 def dis_hrefname():
     # ['continuous_alpha.html', 'continuous_anglit.html',...]
-    dis_hrefname = []
-    url_names = 'https://docs.scipy.org/doc/scipy/tutorial/stats/continuous.html'
-    get_url = requests.get(url_names)
+    hrefname = []
+    url = 'https://docs.scipy.org/doc/scipy/tutorial/stats/continuous.html'
+    get_url = requests.get(url)
     get_text = get_url.text
     soup = BeautifulSoup(get_text, "html.parser")
-    x = soup.find("div", dict(id="continuous-distributions-in-scipy-stats"))
-    categories = x.find_all(class_='reference internal', href=True)
-    for i in categories:
-        dis_hrefname.append(i['href'])
-    dis_hrefname.pop(0)
-    return dis_hrefname
+    div = soup.find("div", dict(id="continuous-distributions-in-scipy-stats"))
+    href = div.find_all(class_='reference internal', href=True)
+    for i in href:
+        hrefname.append(i['href'])
+    hrefname.pop(0)
+    hrefname.pop(15)
+    return hrefname
 
 
-def dis_name(dis_hrefname):
-    dis_name = []
-    for i in dis_hrefname:
-        f = i.replace('.html', '').replace('continuous_', '')
-        dis_name.append(f)
-    return dis_name
-
-
-def dis_button_names():
+def dis_name():
     # ['alpha', 'anglit', 'arcsine', ...]
-    names = []
-    for i, name in enumerate(sorted(stats._distr_params.distcont)):
-        if i == 87:
-            pass
-        else:
-            names.append(str(name[0]))
-    return names
+    name = []
+    hrefname = dis_hrefname()
+    for t in hrefname:
+        f = t.replace('.html', '').replace('continuous_', '')
+        name.append(f)
+    return name
 
 
 def dis_url_names():
     # ['https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.alpha.html#scipy.stats.alpha'...]
     url_names = []
-    for i, name in enumerate(sorted(stats._distr_params.distcont)):
-        if i == 87:
-            pass
-        else:
-            url = 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.' + str(
-                name[0]) + '.html#scipy.stats.' + str(name[0])
-            url_names.append(url)
+    name = dis_name()
+    for i in name:
+        urls = 'https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.' + str(i) + '.html#scipy.stats.' + str(i)
+        url_names.append(urls)
     return url_names
 
 
@@ -73,24 +61,35 @@ def dis_functions():
     # \\exp(-\\frac{1}{2} (a-1/x)^2)\\]', '\n\\[f(x) = \\sin(2x + \\pi/2) = \\cos(2x)\\]'
     functions = []
     url_names = dis_url_names()
-    for idx, i in enumerate(url_names):
-        if idx == 87:
-            print(' \[f(x, a, b) = \frac{1}{ \left(x*log( \frac{b}{a} \right) }')
-        else:
-            html_doc = urllib.request.urlopen(i).read()
-            soup = BeautifulSoup(html_doc, 'html.parser')
-            divTag = soup.find_all("div", class_="math notranslate nohighlight")
-            for tag in divTag:
-                functions.append(tag.text)
+
+    for i in url_names:
+        get_url = requests.get(i)
+        get_text = get_url.text
+        soup = BeautifulSoup(get_text, 'html.parser')
+        div = soup.find_all("div", class_="math notranslate nohighlight")
+        for tag in div:
+            functions.append(tag.text)
     return functions
 
 
 def dis_parameters():
     # [[3.570477051665046, 0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [1.0, 0.0, 1.0],...]
+
+    name = dis_name()
+    parse_params = sorted(stats._distr_params.distcont)
+    df = pd.DataFrame(parse_params, columns=['dist', 'param'])
+    df2 = pd.DataFrame(name, columns=['dist'])
+    inner_join = pd.merge(df2,
+                          df,
+                          on='dist',
+                          how='left')
+    inner_join = inner_join.drop_duplicates(subset=['dist'])
+    inner_join = inner_join.values.tolist()
+
     all_params = []
     names = []
-    for name, params in sorted(stats._distr_params.distcont):
-        names.append(name)
+    for i, params in inner_join:
+        names.append(i)
         loc, scale = 0.00, 1.00
         params = list(params) + [loc, scale]
         all_params.append(params)
@@ -99,10 +98,23 @@ def dis_parameters():
 
 def dis_parameters_name():
     # [['a', 'loc', 'scale'], ['loc', 'scale'],...]
+
+    name = dis_name()
+
+    parse_params = sorted(stats._distr_params.distcont)
+    df = pd.DataFrame(parse_params, columns=['dist', 'param'])
+    df2 = pd.DataFrame(name, columns=['dist'])
+    inner_join = pd.merge(df2,
+                          df,
+                          on='dist',
+                          how='left')
+    inner_join = inner_join.drop_duplicates(subset=['dist'])
+    inner_join = inner_join.values.tolist()
+
     all_params_names = []
 
-    for name, params in sorted(stats._distr_params.distcont):
-        dist = getattr(stats, name)
+    for i, params in inner_join:
+        dist = getattr(stats, i)
         p_names = ['loc', 'scale']
         if dist.shapes:
             p_names = [sh.strip() for sh in dist.shapes.split(',')] + ['loc', 'scale']
@@ -114,71 +126,39 @@ def dis_parameters_name():
 
 def stats_name():
     # ['stats.alpha', 'stats.anglit', 'stats.arcsine',...]
-    stats_names = []
-    for i, name in enumerate(sorted(stats._distr_params.distcont)):
-        if i == 87:
-            pass
-        else:
-            url = 'stats.' + str(name[0])
-            stats_names.append(url)
-    return stats_names
+
+    name = dis_name()
+    stat = []
+    for i in name:
+        url = 'stats.' + str(i)
+        stat.append(url)
+    return stat
 
 
 def doc_name():
     # ['stats.alpha.__doc__', 'stats.anglit.__doc__',...]
-    doc_names = []
-    for i, name in enumerate(sorted(stats._distr_params.distcont)):
-        if i == 87:
-            pass
-        else:
-            url = 'stats.' + str(name[0]) + ('.__doc__')
-            doc_names.append(url)
-    return doc_names
 
+    name = dis_name()
+    doc = []
+    for i in name:
+        url = 'stats.' + str(i) + ('.__doc__')
+        doc.append(url)
+    return doc
 
-def stats_dictionaries():
-    # {'alpha': 'stats.alpha', 'anglit': 'stats.anglit',...}
-    stats = stats_name()
-    distribution_names = dis_button_names()
-    stats_dictionaries = {distribution: stats[i] for i, distribution in enumerate(distribution_names)}
-    return stats_dictionaries
+def dis_dictionaries():
 
-
-def doc_dictionaries():
-    # {'alpha': 'stats.alpha.__doc__', 'anglit': 'stats.anglit.__doc__',...}
     doc = doc_name()
-    distribution_names = dis_button_names()
-    doc_dictionaries = {distribution: doc[i] for i, distribution in enumerate(distribution_names)}
-    return doc_dictionaries
-
-
-def functions_dictionaries():
-    # {'alpha': '\n\\[f(x, a) = \\frac{1}{x^2 \\Phi(a) \\sqrt{2\\pi}} *\n
-    # \\exp(-\\frac{1}{2} (a-1/x)^2)\\]',...}
+    name = dis_name()
     functions = dis_functions()
-    distribution_names = dis_button_names()
-    func_dictionaries = {distribution: functions[i] for i, distribution in enumerate(distribution_names)}
-    return func_dictionaries
+    fullname = dis_fullname()
+    parameters_name = dis_parameters_name()
+    parameters = dis_parameters()
+    url_names = dis_url_names()
 
+    doc_dic = {distribution: doc[i] for i, distribution in enumerate(name)}
+    functions_dic = {distribution: functions[i] for i, distribution in enumerate(name)}
+    fullname_dic = {distribution: fullname[i] for i, distribution in enumerate(name)}
+    parameters_dic = {function: {param: f"{parameters[i][j]:.2f}" for j, param in enumerate(parameters_name[i])} for i, function in enumerate(name)}
+    url_dic = {distribution: [url_names[i], fullname[i]] for i, distribution in enumerate(name)}
 
-def parameters_dictionaries():
-    # {'alpha': {'a': '3.57', 'loc': '0.00', 'scale': '1.00'},...}
-    names = dis_button_names()
-    all_params_names = dis_parameters_name()
-    all_params = dis_parameters()
-    all_dist_params_dict = {function: {param: f"{all_params[i][j]:.2f}" for j, param in enumerate(all_params_names[i])}
-                            for i, function in enumerate(names)}
-    return all_dist_params_dict
-
-
-"""""
-def url_dictionaries():
-
-    url_dictionaries = {distribution: [dis_url_names()[i], scipy_distribution_proper_names()[i]] for i, distribution in enumerate(distr_selectbox_names())}
-
-    return url_dictionaries
-"""""
-dis_hrefname = dis_hrefname()
-b = dis_fullname()
-c = dis_button_names()
-r = dis_name(dis_hrefname)
+    return doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic
