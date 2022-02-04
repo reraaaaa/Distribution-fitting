@@ -12,11 +12,14 @@ import matplotlib.pyplot as plt
 import time
 import base64
 
-import pars_functions
+from DoneStorage.pars_functions import (dis_dictionaries,
+                                        dis_name,
+                                        stats_name,
+                                        )
 
 def p_explore():
 
-    doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = pars_functions.dis_dictionaries()
+    doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = dis_dictionaries()
 
     def make_expanders(expander_name, sidebar=True):
         # Настройка расширителей, которые содержат набор опций.
@@ -33,7 +36,7 @@ def p_explore():
     st.sidebar.subheader("Исследовать")
     with make_expanders("Выбрать распределение"):
         # функция имен
-        display = pars_functions.dis_name()
+        display = dis_name()
 
         # Создать виджет окна выбора, содержащий все функции SciPy
         select_distribution = st.selectbox('Нажмите ниже (или введите), чтобы выбрать распределение', display)
@@ -677,7 +680,7 @@ def p_explore():
             names = []
             ps = []
             for i, param in enumerate(sliders_params[0:-2]):
-                param_name = pars_functions.stats_name().get(f'{select_distribution}').shapes.split(', ')
+                param_name = stats_name().get(f'{select_distribution}').shapes.split(', ')
                 name = f'{param_name[i]}'
                 p = f'{param_name[i]}={param}'
                 names.append(name)
