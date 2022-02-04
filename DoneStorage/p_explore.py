@@ -12,37 +12,36 @@ import matplotlib.pyplot as plt
 import time
 import base64
 
-from DoneStorage import pars_functions
-from pars_functions import (dis_name, dis_dictionaries)
+from pars_functions import (dis_name,
+                            stats_name,
+                            dis_dictionaries,
+                            )
 
 
 def p_explore():
 
     doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = dis_dictionaries()
-    # name_docstring_dict, name_eq_dict, name_proper_dict, all_dist_params_dict, name_url_dict = creating_dictionaries()
-
 
     def make_expanders(expander_name, sidebar=True):
-    # Настройка расширителей, которые содержат набор опций.
+        # Настройка расширителей, которые содержат набор опций.
+        # Аргументы:
+        #   expander_name: вложение
+        # вернет:
+        #   Расширение
         if sidebar:
             try:
                 return st.sidebar.expander(expander_name)
             except:
                 return st.sidebar.beta_expander(expander_name)
 
-
     st.sidebar.subheader("Исследовать")
     with make_expanders("Выбрать распределение"):
-    # имена
+        # функция имен
         display = dis_name()
 
         # Создать виджет окна выбора, содержащий все функции SciPy
-        select_distribution = st.selectbox(
-        'Нажмите ниже (или введите), чтобы выбрать распределение',
-            display)
-
+        select_distribution = st.selectbox('Нажмите ниже (или введите), чтобы выбрать распределение', display)
         st.markdown("**Параметры**")
-
 
         def obtain_functional_data():
             """
@@ -52,26 +51,24 @@ def p_explore():
             Дополнительные параметры включают ползунки с меньшим интервалом шага или поля ввода,
             если пользователи хотят вручную указать значения параметров.
             """
-
             # parameters_dic:
             # Подробности смотрите во вспомогательной функции; пример вывода:
             # 'alpha': {'a': '3.57', 'loc': '0.00', 'scale': '1.00'},
 
             # Расширенный режим будет содержать несколько дополнительных опций
-            advanced_mode = st.checkbox("Нажмите, чтобы настроить параметры",
-                                    value=False)
+            advanced_mode = st.checkbox("Нажмите, чтобы настроить параметры", value=False)
 
             if advanced_mode:
                 vary_parameters_mode = st.radio("Доступные параметры:",
                                                 ('Интервал шага ползунка: 0.10',
-                                                'Интервал шага ползунка: 0.01',
-                                                'Ручной ввод значений параметров')
+                                                 'Интервал шага ползунка: 0.01',
+                                                 'Ручной ввод значений параметров')
                                                 )
 
             # "select_distribution" определяется полем выбора с подсветкой
+            # Создать ползунок для каждого параметра
             if select_distribution in parameters_dic.keys():
                 sliders_params = []
-                # Создайте ползунок для каждого параметра
                 for i, param in enumerate(parameters_dic[f'{select_distribution}']):
                     parameter_value = float(parameters_dic.get(f'{select_distribution}').get(param))
 
@@ -82,18 +79,15 @@ def p_explore():
                     min_param_value = 0.01
 
                     def sliders():
-
-                    # Функция, определяющая ползунок. Он будет запущен со значением по умолчанию,
-                    # определенным в SciPy. Минимальное значение ползунка 0,01;
-                    # максимальное значение 10 - добавляются произвольно.
-
+                        # Функция, определяющая ползунок. Он будет запущен со значением по умолчанию,
+                        # определенным в SciPy. Минимальное значение ползунка 0,01;
+                        # максимальное значение 10 - добавляются произвольно.
 
                         slider_i = st.slider('Значение по умолчанию: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
                                              min_value=min_param_value,
                                              value=float("{:.2f}".format(parameter_value)),
                                              max_value=10.00,
                                              step=step_value)
-
                         return slider_i
 
                     # Выполнение попыток и исключений позволит изменить
@@ -120,7 +114,6 @@ def p_explore():
                 # Добавим примечание для пользователя, чтобы он знал, что делать,
                 # если выберет недопустимое значение параметра.
                 # st.markdown("**Notes**")
-
                 # st.info(
                 #        """
                 #        Для смещения и/или масштабирования распределения используйте
@@ -131,7 +124,7 @@ def p_explore():
                 #        """
                 #        )
 
-                # Для каждого выбранного распредеения создадим ссылку на
+                # Для каждого выбранного распределения создадим ссылку на
                 # официальную страницу документации SciPy об этой функции.
                 st.markdown("**SciPy официальная документация:**")
                 st.info(f"""
@@ -148,52 +141,42 @@ def p_explore():
         st.markdown(f"<h1 style='text-align: center;'>{fullname_dic[select_distribution]}</h1>", unsafe_allow_html=True)
 
     def get_multi_parameters(*c_params):
-            """
-            Эта функция принимает несколько аргументов, которые будут значениями
-            параметров функции. Каждая функция имеет от 2 до 6 параметров, два из которых
-            всегда одинаковы: loc и scale.
+        # Эта функция принимает несколько аргументов, которые будут значениями
+        # параметров функции. Каждая функция имеет от 2 до 6 параметров, два из которых
+        # всегда одинаковы: loc и scale.
+        # Аргументы:
+        #   *c_params : список параметров функции распределения
+        # вернет:
+        #   x: массив float64 - Генерируются равномерно расположенные числа
+        #   r: массив float64 - Сгенерированные случайные числа с использованием выбранного распределения.
+        #   rv: frozen распределение
 
-            Параметры
-            ----------
-            *c_params : список параметров функции распределения.
+        # Размер выборки
+        size = 400
 
-            Возвращает
-            -------
-            x : массив float64
-                Генерируются равномерно расположенные числа.
-            r : массив float64
-                Сгенерированные случайные числа с использованием выбранного распределения.
-            rv : frozen распределение
+        # Текущие scipy-функции имеют от 2 до 6 параметров (считая loc и scale),
+        # которые будут в *c_params - как получено из ползунков/поля ввода.
+        # Чтобы иметь возможность использовать параметры формы и значения loc/scale,
+        # я просто говорю, какие есть какие, поскольку loc/scale всегда предпоследние и последние.
+        for j, param in enumerate(c_params):
+            # Возвращает значение именованного атрибута объекта
+            dist = getattr(stats, select_distribution)
+            # Генерирация равномерно распределенных чисел в заданном интервале
+            x = np.linspace(dist.ppf(0.001, *c_params[j][0:(len(*c_params) - 2)],
+                                     loc=c_params[0][-2], scale=c_params[0][-1]),
+                            dist.ppf(0.999, *c_params[j][0:(len(*c_params) - 2)],
+                                     loc=c_params[0][-2], scale=c_params[0][-1]), size)
 
-            """
+            # Создайте замороженную случайную величину «RV», используя параметры функции
+            # Она будет использоваться для отображения PDF
+            rv = dist(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2],
+                      scale=c_params[0][-1])
 
-            # Размер выборки
-            size = 400
-            # Текущие scipy-функции имеют от 2 до 6 параметров (считая loc и scale),
-            # которые будут в *c_params - как получено из ползунков/поля ввода.
-
-            # Чтобы иметь возможность использовать параметры формы и значения loc/scale,
-            # я просто говорю, какие есть какие, поскольку loc/scale всегда предпоследние и последние.
-            for j, param in enumerate(c_params):
-                # Возвращает значение именованного атрибута объекта
-                dist = getattr(stats, select_distribution)
-
-                # Генерирация равномерно распределенных чисел в заданном интервалк
-                x = np.linspace(dist.ppf(0.001, *c_params[j][0:(len(*c_params) - 2)],
-                                         loc=c_params[0][-2], scale=c_params[0][-1]),
-                                dist.ppf(0.999, *c_params[j][0:(len(*c_params) - 2)],
-                                         loc=c_params[0][-2], scale=c_params[0][-1]), size)
-
-                # Создайте замороженную случайную величину «RV», используя параметры функции
-                # Она будет использоваться для отображения PDF
-                rv = dist(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2],
-                          scale=c_params[0][-1])
-
-                # Генерация случайных чисел, используя выбранное распределение
-                # Они будут использоваться для построения гистограммы
-                r = dist.rvs(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2],
-                             scale=c_params[0][-1], size=size)
-            return x, r, rv
+            # Генерация случайных чисел, используя выбранное распределение
+            # Они будут использоваться для построения гистограммы
+            r = dist.rvs(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2],
+                         scale=c_params[0][-1], size=size)
+        return x, r, rv
 
     x1, r1, rv1 = get_multi_parameters(sliders_params)
 
@@ -204,9 +187,9 @@ def p_explore():
                 or select_distribution == 'f' \
                 or select_distribution == 'genextreme' \
                 or select_distribution == 'loglaplace':
-                st.markdown(f'{functions_dic[select_distribution]}')
+            st.markdown(f'{functions_dic[select_distribution]}')
         else:
-                st.latex(f'{functions_dic[select_distribution]}')
+            st.latex(f'{functions_dic[select_distribution]}')
 
     # Дополнительно, поскольку я заметил, что вычисление levy_stable занимает много времени
     if select_distribution == 'levy_stable':
@@ -318,7 +301,7 @@ def p_explore():
     st.sidebar.write("")
     st.sidebar.write("")
 
-        #######  Здесь я определяю класс Figure #######
+    # Здесь я определяю класс Figure
     class Figure:
         """ Класс Figure: используется для отображения реквизита Figure и управления им. """
 
@@ -385,8 +368,7 @@ def p_explore():
             self.colors = colors
 
         def display_mode(self):
-            """ rc Параметры для светлого и темного режима """
-
+            # rc Параметры для светлого и темного режима
             plot_mode = self.plot_mode
 
             if plot_mode == 'Dark Mode':
@@ -398,7 +380,7 @@ def p_explore():
                 plt.rcParams['figure.facecolor'] = 'white'
 
         def pdf_cdf_lines(self, ax):
-            """ Как построить линии PDF/CDF и настроить "Shine" """
+            # Как построить линии PDF/CDF и настроить "Shine"
 
             # Сделайте линию сияющей
             n_lines = 5
@@ -432,7 +414,7 @@ def p_explore():
                                 alpha=alpha_value,
                                 linewidth=(diff_linewidth * n))
 
-                            # Отметьте точку на CDF
+                # Отметьте точку на CDF
                 if select_mark_P:
                     xmin, xmax = ax.get_xlim()
                     ax.vlines(x_cdf, ymin=0, ymax=self.rv.cdf(x_cdf),
@@ -444,425 +426,390 @@ def p_explore():
                     ax.annotate(f'({x_cdf:.2f}, {self.rv.cdf(x_cdf):.2f})',
                                 xy=(x_cdf, self.rv.cdf(x_cdf)),
                                 color=self.colors['cdf_line_color'])
-                if select_sf:
-                    ax.plot(self.x, self.rv.sf(self.x), linestyle='-',
-                            color='plum',
-                            lw=1, label='SF')
+            if select_sf:
+                ax.plot(self.x, self.rv.sf(self.x), linestyle='-',
+                        color='plum',
+                        lw=1, label='SF')
 
-                    if select_sf_shine:
-                        for n in range(1, n_lines):
-                            ax.plot(self.x, self.rv.sf(self.x), '-',
-                                    color='plum',
-                                    alpha=alpha_value,
-                                    linewidth=(diff_linewidth * n))
+                if select_sf_shine:
+                    for n in range(1, n_lines):
+                        ax.plot(self.x, self.rv.sf(self.x), '-',
+                                color='plum',
+                                alpha=alpha_value,
+                                linewidth=(diff_linewidth * n))
 
-            def boxplot(self, ax):
-                """ Задайте свойства гистаграммы. """
+        def boxplot(self, ax):
+            # Задайте свойства гистограммы.
+            bp = ax.boxplot(self.r, patch_artist=True,
+                            vert=False,
+                            notch=False,
+                            showfliers=False
+                            )
 
-                bp = ax.boxplot(self.r, patch_artist=True,
-                                vert=False,
-                                notch=False,
-                                showfliers=False
-                                )
+            for element in ['boxes', 'whiskers', 'fliers', 'means', 'medians', 'caps']:
+                plt.setp(bp[element], color=self.colors['boxplot_lines_color'])
+            for patch in bp['boxes']:
+                patch.set(facecolor=self.colors['boxplot_face_color'])
 
-                for element in ['boxes', 'whiskers', 'fliers', 'means', 'medians', 'caps']:
-                    plt.setp(bp[element], color=self.colors['boxplot_lines_color'])
-                for patch in bp['boxes']:
-                    patch.set(facecolor=self.colors['boxplot_face_color'])
+            # Переместить метку x ниже — она будет активна, если показана блочная диаграмма.
+            ax.set_xlabel(self.xlabel)
+            # В дополнение к глобальным параметрам rcParams установите параметры графика.:
+            ax.spines['left'].set_visible(False)
+            ax.set_yticklabels([])
+            ax.set_yticks([])
+            ax.set_ylim(0.9, 1.1)
 
-                    # Переместить метку x ниже — она будет активна, если показана блочная диаграмма.
-                ax.set_xlabel(self.xlabel)
+        def quantiles(self, ax):
+            # Квантиль и их свойства графика.
 
-                # В дополнение к глобальным параметрам rcParams установите параметры графика.:
-                ax.spines['left'].set_visible(False)
-                ax.set_yticklabels([])
-                ax.set_yticks([])
-                ax.set_ylim(0.9, 1.1)
+            def get_line(self, q):
+                # Вычислить квантили и установить их в виде вертикальных линий.
 
-            def quantiles(self, ax):
-                """ Квантиль и их свойства графика. """
+                # Вычислить
+                quant = mquantiles(self.r)
 
-                def get_line(self, q):
-                    """ Вычислить квантили и установить их в виде вертикальных линий. """
+                # Сюжет
+                ax.vlines(quant[q - 1], ymin=0, ymax=self.rv.pdf(quant[q - 1]),
+                          color=self.colors[f'quant{q}_color'],
+                          dashes=self.lines['dashes_r'],
+                          linewidth=2, label=f'Q{q} = {quant[q - 1]:.2f}',
+                          zorder=0, clip_on=False)
 
-                    # Вычислить
-                    quant = mquantiles(self.r)
+                # Этикетка на полпути
+                ax.text(quant[q - 1], self.rv.pdf(quant[q - 1]) * 0.5, f'Q{q}',
+                        ha='center', fontsize=10,
+                        color=self.colors[f'quant{q}_color'])
 
-                    # Сюжет
-                    ax.vlines(quant[q - 1], ymin=0, ymax=self.rv.pdf(quant[q - 1]),
-                              color=self.colors[f'quant{q}_color'],
-                              dashes=self.lines['dashes_r'],
-                              linewidth=2, label=f'Q{q} = {quant[q - 1]:.2f}',
-                              zorder=0, clip_on=False)
+            # Управление Streamlit - флажки для Q1/2/3: вкл/выкл
+            if q1:
+                q = 1
+                get_line(self, q)
+            if q2:
+                q = 2
+                get_line(self, q)
+            if q3:
+                q = 3
+                get_line(self, q)
 
-                    # Этикетка на полпути
-                    ax.text(quant[q - 1], self.rv.pdf(quant[q - 1]) * 0.5, f'Q{q}',
-                            ha='center', fontsize=10,
-                            color=self.colors[f'quant{q}_color'])
+        def sigmas(self, ax):
+            # Сигмы и их сюжетные свойства.
+            # Нужно вычислить выше с помощью функции!
+            def which_s(self, s):
+                # Вычислите стандартное отклонение и среднее значение
+                # Затенение между: среднее-стандартное и среднее+стандартное, которое показывает сигму.
 
-                # Управление Streamlit - флажки для Q1/2/3: вкл/выкл
-                if q1:
-                    q = 1
-                    get_line(self, q)
+                x01 = s * self.r.std()
+                # Выберите только значения x в диапазоне сигма
+                x1 = self.x[(self.x > (self.r.mean() - x01)) & (self.x < (x01 + self.r.mean()))]
+                # Это заштрихует 1/2/3 сигма, ограничивая y на границе PDF
+                ax.fill_between(x1, self.rv.pdf(x1), 0,
+                                color=self.colors['pdf_line_color'],
+                                alpha=0.2)
 
-                if q2:
-                    q = 2
-                    get_line(self, q)
-                if q3:
-                    q = 3
-                    get_line(self, q)
+            # Управление Streamlit - флажки для sigma1/2/3: вкл/выкл
+            if s1:
+                s = 1
+                which_s(self, s)
+            if s2:
+                s = 2
+                which_s(self, s)
+            if s3:
+                s = 3
+                which_s(self, s)
 
-            def sigmas(self, ax):
-                """ Сигмы и их сюжетные свойства. """
+        def histogram(self, ax):
+            # Свойства гистограммы
 
-                # Нужно вычислить выше с помощью функции!
-                def which_s(self, s):
-                    """
-                   Вычислите стандартное отклонение и среднее значение/
-                   Затенение между: среднее-стандартное и среднее+стандартное, которое показывает сигму.
-                    """
+            ax.hist(self.r, density=True, bins=20,
+                    edgecolor=self.colors['hist_edge_color'],
+                    fill=False,  # hatch='x',
+                    linewidth=1, alpha=1, label='Sample distribution')
 
-                    x01 = s * self.r.std()
-                    # Выберите только значения x в диапазоне сигма
-                    x1 = self.x[(self.x > (self.r.mean() - x01)) & \
-                                (self.x < (x01 + self.r.mean()))]
-                    # Это заштрихует 1/2/3 сигма, ограничивая y на границе PDF
-                    ax.fill_between(x1, self.rv.pdf(x1), 0,
-                                    color=self.colors['pdf_line_color'],
-                                    alpha=0.2)
+        def get_figure(self, fig_type):
+            # Макет фигуры: одна фигура или две в качестве сюжета.
+            # Я хочу этого, потому что boxplot (который помещается как подзаголовок)
+            # может быть установлен на: вкл/выкл.
 
-                # Управление Streamlit - флажки для sigma1/2/3: вкл/выкл
-                if s1:
-                    s = 1
-                    which_s(self, s)
+            if fig_type == 'dual':
+                fig, ax = plt.subplots(2, 1, gridspec_kw={'height_ratios': [9, 0.7]})
+                return fig, ax
+            else:
+                fig, ax = plt.subplots(1, 1)
+                return fig, ax
 
-                if s2:
-                    s = 2
-                    which_s(self, s)
-                if s3:
-                    s = 3
-                    which_s(self, s)
+        def figure_display_control(self):
+            # Установите двойную фигуру: это будет иметь распределение и коробочную диаграмму.
+            # В этом случае у нас есть распределения и его свойства на оси [0], а если boxplot включен,
+            # он будет установлен на оси [1].
 
-            def histogram(self, ax):
-                """ Свойства гистограммы"""
+            plt.rcParams.update(self.global_rc_params)
+            # Управление Streamlit - если boxplot верно
+            if select_boxplot:
+                fig, ax = Figure.get_figure(self, 'dual')
+                Figure.pdf_cdf_lines(self, ax=ax[0])
 
-                ax.hist(self.r, density=True, bins=20,
-                        edgecolor=self.colors['hist_edge_color'],
-                        fill=False,  # hatch='x',
-                        linewidth=1, alpha=1, label='Sample distribution')
+                if q1 or q2 or q3:
+                    Figure.quantiles(self, ax=ax[0])
+                if s1 or s2 or s3:
+                    Figure.sigmas(self, ax=ax[0])
+                if select_hist:
+                    Figure.histogram(self, ax=ax[0])
 
-            def get_figure(self, fig_type):
-                """
-                Макет фигуры: одна фигура или две в качестве сюжета.
-                Я хочу этого, потому что boxplot (который помещается как подзаголовок)
-                может быть установлен на: вкл/выкл.
-                """
+                legend = ax[0].legend(bbox_to_anchor=(0, 1.02, 1, 0.2),
+                                      loc="lower left", mode="expand",
+                                        borderaxespad=0, ncol=3)
+                legend.get_frame().set_edgecolor("#525252")
 
-                if fig_type == 'dual':
-                    fig, ax = plt.subplots(2, 1,
-                                           gridspec_kw={'height_ratios': [9, 0.7]})
+                # В случае, если все дистрибутивы проп. from ax[0] выключены,
+                # установите коробчатую диаграмму на оси [0], если коробчатая диаграмма включена.
 
-                    return fig, ax
-
-                else:
-                    fig, ax = plt.subplots(1, 1)
-                    return fig, ax
-
-            def figure_display_control(self):
-                """
-               Установите двойную фигуру: это будет иметь распределение и коробочную диаграмму.
-               В этом случае у нас есть распределения и его свойства на оси [0], а если boxplot включен,
-               он будет установлен на оси [1].
-                """
-
-                plt.rcParams.update(self.global_rc_params)
-
-                # Управление Streamlit - если boxplot верно
-                if select_boxplot:
-                    fig, ax = Figure.get_figure(self, 'dual')
-
-                    Figure.pdf_cdf_lines(self, ax=ax[0])
-
-                    if q1 or q2 or q3:
-                        Figure.quantiles(self, ax=ax[0])
-
-                    if s1 or s2 or s3:
-                        Figure.sigmas(self, ax=ax[0])
-
-                    if select_hist:
-                        Figure.histogram(self, ax=ax[0])
-
-                    legend = ax[0].legend(bbox_to_anchor=(0, 1.02, 1, 0.2),
-                                          loc="lower left", mode="expand",
-                                          borderaxespad=0, ncol=3)
-                    legend.get_frame().set_edgecolor("#525252")
-
-                    # В случае, если все дистрибутивы проп. from ax[0] выключены,
-                    # установите коробчатую диаграмму на оси [0], если коробчатая диаграмма включена.
-
-                    if (select_cdf == False and select_pdf == False and select_hist == False and select_sf == False):
-                        fig, ax = Figure.get_figure(self, 'single')
-                        Figure.boxplot(self, ax=ax)
-
-                    else:
-                        Figure.boxplot(self, ax=ax[1])
-
-                        # Получить xlim из верхнего изображения и перенести его на нижнее,
-                        # так как мы хотим, чтобы ось X распределений и диаграмма были выровнены.
-
-                        ax[1].set_xlim(ax[0].get_xlim())
-
-                        # Переместите метку y на соответствующую ось.
-                        ax[0].set_ylabel(self.ylabel)
-
-                else:
-                    # Один рис. Режим
+                if (select_cdf == False and select_pdf == False and select_hist == False and select_sf == False):
                     fig, ax = Figure.get_figure(self, 'single')
+                    Figure.boxplot(self, ax=ax)
+                else:
+                    Figure.boxplot(self, ax=ax[1])
+                    # Получить xlim из верхнего изображения и перенести его на нижнее,
+                    # так как мы хотим, чтобы ось X распределений и диаграмма были выровнены.
 
-                    Figure.pdf_cdf_lines(self, ax=ax)
+                    ax[1].set_xlim(ax[0].get_xlim())
 
-                    if select_hist:
-                        Figure.histogram(self, ax=ax)
-
-                    if q1 or q2 or q3:
-                        Figure.quantiles(self, ax=ax)
-
-                    if s1 or s2 or s3:
-                        Figure.sigmas(self, ax=ax)
-
-                    ax.set_xlabel(self.xlabel)
-                    ax.set_ylabel(self.ylabel)
-
-                    legend = ax.legend(bbox_to_anchor=(0, 1.02, 1, 0.2),
-                                       loc="lower left", mode="expand",
-                                       borderaxespad=0, ncol=3)
-                    legend.get_frame().set_edgecolor("#525252")
-
-                # Если ничего не выбрано в разделе "Что показывать на рисунке"
-                if (select_cdf == False and select_pdf == False and select_hist == False and select_boxplot == False and select_sf == False):
-                    fig, ax = Figure.get_figure(self, 'single')
-
-                    ax.text(0.1, 0.5, 'Tabula rasa',
-                            va='center', fontsize=20)
-                    ax.spines['left'].set_visible(False)
-                    ax.spines['bottom'].set_visible(False)
-                    ax.set_yticklabels([])
-                    ax.set_yticks([])
-                    ax.set_xticklabels([])
-                    ax.set_xticks([])
-
-                return fig
-
-        def port_to_streamlit():
-            """
-            Используйте класс Figure, чтобы получить то, что будет отображаться на графике.
-            Показать рисунок с помощью виджета Streamlit: pyplot
-            """
-
-            p = Figure(
-                x1,
-                r1,
-                rv1,
-                Figure.xlabel,
-                Figure.ylabel,
-                plot_mode,
-                Figure.global_rc_params,
-                Figure.lines,
-                Figure.colors,
-            )
-
-            # Чтобы получить светлый/темный режим
-            Figure.display_mode(p)
-
-            # Разобрать в Streamlit
-            st.pyplot(p.figure_display_control())
-
-        # Output statistics into a Table
-        def df_generate_statistics(r1):
-            """
-            Вычислите статистическую информацию о созданном распределении.
-            Разберите его в кадр данных Pandas.
-            Use r1: array of float64 — сгенерированные случайные числа с использованием выбранного распределения.
-            """
-
-            df_data = pd.DataFrame(r1)
-            stats = df_data.describe()
-            stats.loc['var'] = df_data.var().tolist()
-            stats.loc['skew'] = df_data.skew().tolist()
-            stats.loc['kurt'] = df_data.kurtosis().tolist()
-
-            # Разобрать в Streamlit
-            st.dataframe(stats.rename(columns={0: 'Value'}))
-
-        # Радиокнопки, управляющие темным/светлым режимом
-        if plot_mode == 'Dark Mode':
-            port_to_streamlit()
-
-        if plot_mode == 'Light Mode':
-            port_to_streamlit()
-
-        # Streamlit вкл/выкл, чтобы показать/скрыть статистическую информацию
-        if df_stat:
-            df_generate_statistics(r1)
-
-        #### Generate Python code ###
-
-        def how_many_params():
-            """ Extract User selected parameter values """
-            # For distribution containing only scale/loc
-            if len(sliders_params) == 2:
-                names = ""
-                ps = ""
-                scale = f'scale={sliders_params[-1]}'
-                loc = f'loc={sliders_params[-2]}'
-
-                return scale, loc, names, ps
+                    # Переместите метку y на соответствующую ось.
+                    ax[0].set_ylabel(self.ylabel)
 
             else:
-                scale = f'scale={sliders_params[-1]}'
-                loc = f'loc={sliders_params[-2]}'
+                # Один рис. Режим
+                fig, ax = Figure.get_figure(self, 'single')
 
-                names = []
-                ps = []
-                for i, param in enumerate(sliders_params[0:-2]):
-                    param_name = stats_options().get(f'{select_distribution}').shapes.split(', ')
-                    name = f'{param_name[i]}'
-                    p = f'{param_name[i]}={param}'
+                Figure.pdf_cdf_lines(self, ax=ax)
 
-                    names.append(name)
-                    ps.append(p)
+                if select_hist:
+                    Figure.histogram(self, ax=ax)
+
+                if q1 or q2 or q3:
+                    Figure.quantiles(self, ax=ax)
+
+                if s1 or s2 or s3:
+                    Figure.sigmas(self, ax=ax)
+
+                ax.set_xlabel(self.xlabel)
+                ax.set_ylabel(self.ylabel)
+
+                legend = ax.legend(bbox_to_anchor=(0, 1.02, 1, 0.2),
+                                   loc="lower left", mode="expand",
+                                   borderaxespad=0, ncol=3)
+                legend.get_frame().set_edgecolor("#525252")
+
+            # Если ничего не выбрано в разделе "Что показывать на рисунке"
+            if (select_cdf == False and select_pdf == False and select_hist == False and select_boxplot == False and select_sf == False):
+                fig, ax = Figure.get_figure(self, 'single')
+
+                ax.text(0.1, 0.5, 'Tabula rasa',
+                        va='center', fontsize=20)
+                ax.spines['left'].set_visible(False)
+                ax.spines['bottom'].set_visible(False)
+                ax.set_yticklabels([])
+                ax.set_yticks([])
+                ax.set_xticklabels([])
+                ax.set_xticks([])
+            return fig
+
+    def port_to_streamlit():
+        # Используем класс Figure, чтобы получить то, что будет отображаться на графике.
+        # Показать рисунок с помощью виджета Streamlit: pyplot
+
+        p = Figure(
+            x1,
+            r1,
+            rv1,
+            Figure.xlabel,
+            Figure.ylabel,
+            plot_mode,
+            Figure.global_rc_params,
+            Figure.lines,
+            Figure.colors,
+        )
+
+        # Чтобы получить светлый/темный режим
+        Figure.display_mode(p)
+
+        # Разобрать в Streamlit
+        st.pyplot(p.figure_display_control())
+
+    # Output statistics into a Table
+    def df_generate_statistics(r1):
+        # Вычислите статистическую информацию о созданном распределении.
+        # Разберите его в кадр данных Pandas.
+        # Use r1: array of float64 — сгенерированные случайные числа с использованием выбранного распределения.
+
+        df_data = pd.DataFrame(r1)
+        stats = df_data.describe()
+        stats.loc['var'] = df_data.var().tolist()
+        stats.loc['skew'] = df_data.skew().tolist()
+        stats.loc['kurt'] = df_data.kurtosis().tolist()
+
+        # Разобрать в Streamlit
+        st.dataframe(stats.rename(columns={0: 'Value'}))
+
+    # Радиокнопки, управляющие темным/светлым режимом
+    if plot_mode == 'Dark Mode':
+        port_to_streamlit()
+
+    if plot_mode == 'Light Mode':
+        port_to_streamlit()
+
+    # Streamlit вкл/выкл, чтобы показать/скрыть статистическую информацию
+    if df_stat:
+        df_generate_statistics(r1)
+
+    # Generate Python code
+
+    def how_many_params():
+        # Извлечь значения параметров, выбранные пользователем. Для
+        # распределения, содержащего только масштаб / локацию.
+        if len(sliders_params) == 2:
+            names = ""
+            ps = ""
+            scale = f'scale={sliders_params[-1]}'
+            loc = f'loc={sliders_params[-2]}'
 
             return scale, loc, names, ps
 
-        # Get output
-        scale, loc, name, p = how_many_params()
+        else:
+            scale = f'scale={sliders_params[-1]}'
+            loc = f'loc={sliders_params[-2]}'
 
-        # Extracted p is in the form: ['a=4.3', 'b=4.0'] so I need to remove [',']
-        a = str([i for i in p]).strip(" [] ").strip("'").replace("'", '').replace(", ", '\n')
+            names = []
+            ps = []
+            for i, param in enumerate(sliders_params[0:-2]):
+                param_name = stats_name().get(f'{select_distribution}').shapes.split(', ')
+                name = f'{param_name[i]}'
+                p = f'{param_name[i]}={param}'
+                names.append(name)
+                ps.append(p)
 
-        # I need to format output so I can get shape paramters without additional
-        # characters.
-        def get_n(name):
-            # for distributions with only scale/loc
-            if len(name) == 0:
-                name = ''
-            else:
-                name = str([i for i in name]).strip(" [] ").strip("'").replace("'", '') + ','
-            return name
+        return scale, loc, names, ps
 
-        name = get_n(name)
+    # Получить вывод
+    scale, loc, name, p = how_many_params()
 
-        # To generate code, I pass: {loc} and {scale} which will have their
-        # name and values, and {a} which will be shape parameters - they can
-        # be many and each will be printed out in the new line
-        # {select_distribution} - is passed from the slider
-        # {name} - contains only name of the shape parameters, without values
-        # Have to place un-indented, otherwise py code will be indented
-        generate_code = f"""
-        # -*- coding: utf-8 -*-
-        # Generated using Distribution Analyser:
-        # https://github.com/rdzudzar/DistributionAnalyser
-        # {time.strftime("%Y%m%d_%H%M%S")}
-        # ---
+    # Извлеченный p имеет вид: ['a=4.3', 'b=4.0'], поэтому нужно удалить [',']
+    a = str([i for i in p]).strip(" [] ").strip("'").replace("'", '').replace(", ", '\n')
 
-        import matplotlib.pyplot as plt #v3.2.2
-        import numpy as np #v1.18.5
-        from scipy.stats import {select_distribution} #v1.6.1
+    # Нужно отформатировать вывод, чтобы я мог получить параметры формы без дополнительных символов.
+    def get_n(name):
+        # для распределений только с масштабом/местоположением
+        if len(name) == 0:
+            name = ''
+        else:
+            name = str([i for i in name]).strip(" [] ").strip("'").replace("'", '') + ','
+        return name
 
-        # Set random seed
-        np.random.seed(1)
+    name = get_n(name)
 
-        # Function parameters
-        {scale}
-        {loc}
-        {a}              
+    # Для генерации кода я передаю: {loc} и {scale}, которые будут иметь свое имя и значения,
+    # и {a}, которые будут параметрами формы - их может быть много, и каждый будет напечатан в
+    # новой строке {select_distribution} - передается из ползунка {имя} содержит только название
+    # параметров формы, без значений. Должен размещаться без отступа, иначе код py будет с отступом
+    generate_code = f"""
+# -*- coding: utf-8 -*-
+# Generated using Distribution Analyser:
+# https://github.com/rdzudzar/DistributionAnalyser
+# {time.strftime("%Y%m%d_%H%M%S")}
+# ---
 
-        # Generate evenly spaced numbers over a specified interval
-        size = 400
-        x = np.linspace({select_distribution}.ppf(0.001, {name} loc=loc, scale=scale ), 
-                        {select_distribution}.ppf(0.999, {name} loc=loc, scale=scale ),
-                        size)
+import matplotlib.pyplot as plt #v3.2.2
+import numpy as np #v1.18.5
+from scipy.stats import {select_distribution} #v1.6.1
 
-        # Freeze the distribution
-        rv = {select_distribution}({name} loc=loc, scale=scale)
+# Set random seed
+np.random.seed(1)
 
-        # Generate random numbers
-        r = {select_distribution}.rvs({name} loc=loc, scale=scale, size=size)
+# Function parameters
+{scale}
+{loc}
+{a}              
+     
+# Generate evenly spaced numbers over a specified interval
+size = 400
+x = np.linspace({select_distribution}.ppf(0.001, {name} loc=loc, scale=scale ), 
+                {select_distribution}.ppf(0.999, {name} loc=loc, scale=scale ),
+                size)
 
-        # Make a plot
-        fig, ax = plt.subplots(2, 1,
-                               gridspec_kw={{'height_ratios': [9, 0.7]}})
+# Freeze the distribution
+rv = {select_distribution}({name} loc=loc, scale=scale)
 
-        # Plot PDF, CDF and SF
-        ax[0].plot(x, rv.pdf(x), linestyle='-', color='#3182bd', lw=3, label='PDF')
-        ax[0].plot(x, rv.cdf(x), linestyle='-', color='k', lw=3, label='CDF')
-        ax[0].plot(x, rv.sf(x), linestyle='-', color='#df65b0', lw=3, label='SF')
+# Generate random numbers
+r = {select_distribution}.rvs({name} loc=loc, scale=scale, size=size)
 
-        # Plot Histogram
-        ax[0].hist(r, density=True, bins=20, color='lightgrey',
-                   edgecolor='k', label='Sample')
+# Make a plot
+fig, ax = plt.subplots(2, 1,
+                       gridspec_kw={{'height_ratios': [9, 0.7]}})
 
-        # Plot Boxplot
-        bp = ax[1].boxplot(r, patch_artist=True,
-                   vert=False,
-                   notch=False,
-                   showfliers=False,
-                   ) 
-        # Boxplot aestetic
-        for median in bp['medians']: median.set(color ='red', linewidth = 2) 
-        for patch in bp['boxes']: patch.set(facecolor='white') 
+# Plot PDF, CDF and SF
+ax[0].plot(x, rv.pdf(x), linestyle='-', color='#3182bd', lw=3, label='PDF')
+ax[0].plot(x, rv.cdf(x), linestyle='-', color='k', lw=3, label='CDF')
+ax[0].plot(x, rv.sf(x), linestyle='-', color='#df65b0', lw=3, label='SF')
 
-        # Set legend
-        ax[0].legend(bbox_to_anchor=(0,1.1,1,0.2), 
-                     loc="center", 
-                     borderaxespad=0, ncol=2)
+# Plot Histogram
+ax[0].hist(r, density=True, bins=20, color='lightgrey',
+           edgecolor='k', label='Sample')
 
-        # Set Figure aestetics
-        ax[0].spines['top'].set_visible(False)
-        ax[0].spines['right'].set_visible(False)
-        ax[0].set_title('Distribution: {select_distribution}')
+# Plot Boxplot
+bp = ax[1].boxplot(r, patch_artist=True,
+           vert=False,
+           notch=False,
+           showfliers=False,
+           ) 
+# Boxplot aestetic
+for median in bp['medians']: median.set(color ='red', linewidth = 2) 
+for patch in bp['boxes']: patch.set(facecolor='white') 
 
-        ax[1].set_xlim(ax[0].get_xlim())
-        ax[1].set_ylim(0.9, 1.1)
-        ax[1].spines['left'].set_visible(False)
-        ax[1].spines['top'].set_visible(False)
-        ax[1].spines['right'].set_visible(False)
-        ax[1].set_yticklabels([])
-        ax[1].set_yticks([])
+# Set legend
+ax[0].legend(bbox_to_anchor=(0,1.1,1,0.2), 
+             loc="center", 
+             borderaxespad=0, ncol=2)
 
-        ax[1].set_xlabel('X value')
-        ax[0].set_ylabel('Density')
+# Set Figure aestetics
+ax[0].spines['top'].set_visible(False)
+ax[0].spines['right'].set_visible(False)
+ax[0].set_title('Distribution: {select_distribution}')
 
-        plt.show()
+ax[1].set_xlim(ax[0].get_xlim())
+ax[1].set_ylim(0.9, 1.1)
+ax[1].spines['left'].set_visible(False)
+ax[1].spines['top'].set_visible(False)
+ax[1].spines['right'].set_visible(False)
+ax[1].set_yticklabels([])
+ax[1].set_yticks([])
 
-        """
+ax[1].set_xlabel('X value')
+ax[0].set_ylabel('Density')
 
-        def get_code():
-            """ Prints out the python formatted code"""
+plt.show()
 
-            st.code(f"{generate_code}")
+"""
+    def get_code():
+        # Распечатывает код в формате python
+        st.code(f"{generate_code}")
 
-        def py_file_downloader(py_file_text):
-            """
-            Strings <-> bytes conversions and creating a link which will
-            download generated python script.
-            """
+    def py_file_downloader(py_file_text):
+        # Преобразование строк <-> байтов и создание ссылки, по которой будет
+        # загружаться сгенерированный скрипт Python.
 
-            # Add a timestamp to the name of the saved file
-            time_stamp = time.strftime("%Y%m%d_%H%M%S")
+        # Добавить метку времени к имени сохраненного файла
+        time_stamp = time.strftime("%Y%m%d_%H%M%S")
 
-            # Base64 takes care of porting info to the data
-            b64 = base64.b64encode(py_file_text.encode()).decode()
+        # Base64 позаботится о переносе информации в данные.
+        b64 = base64.b64encode(py_file_text.encode()).decode()
 
-            # Saved file will have distribution name and the timestamp
-            code_file = f"{select_distribution}_{time_stamp}.py"
-            st.markdown(f'** Download Python File **: \
-                            <a href="data:file/txt;base64,{b64}" \
-                                download="{code_file}">Click Here</a>',
-                        unsafe_allow_html=True)
+        # Сохраненный файл будет иметь имя дистрибутива и отметку времени
+        code_file = f"{select_distribution}_{time_stamp}.py"
+        st.markdown(f'** Скачать файл Python **: \
+                    <a href="data:file/txt;base64,{b64}" \
+                        download="{code_file}">Кликните сюда</a>',
+                    unsafe_allow_html=True)
 
-        # Press the button to get the python code and download hyperlink option
-        if export_code:
-            get_code()
-
-            py_file_downloader(f"{generate_code}")
+    # Нажмите кнопку, чтобы получить код Python и загрузить опцию гиперссылки.
+    if export_code:
+        get_code()
+        py_file_downloader(f"{generate_code}")
