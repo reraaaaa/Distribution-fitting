@@ -12,8 +12,7 @@ import matplotlib.pyplot as plt
 import time
 import base64
 
-from pars_functions import (dis_name,
-                            stats_name, dis_dictionaries)
+from pars_functions import (dis_name, dis_dictionaries)
 
 def p_explore():
 
