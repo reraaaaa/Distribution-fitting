@@ -163,3 +163,5 @@ def dis_dictionaries():
     url_dic = {distribution: [url_names[i], fullname[i]] for i, distribution in enumerate(name)}
 
     return doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic
+
+x = stats_name()
