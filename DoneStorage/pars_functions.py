@@ -132,7 +132,8 @@ def stats_name():
     for i in name:
         url = 'stats.' + str(i)
         stat.append(url)
-    return stat
+    stat_dic = {distribution: stat[i] for i, distribution in enumerate(name)}
+    return stat_dic
 
 
 def doc_name():
