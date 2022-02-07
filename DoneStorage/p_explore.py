@@ -746,8 +746,6 @@ def p_explore():
     # параметров формы, без значений. Должен размещаться без отступа, иначе код py будет с отступом
     generate_code = f"""
 # -*- coding: utf-8 -*-
-# Generated using Distribution Analyser:
-# https://github.com/rdzudzar/DistributionAnalyser
 # {time.strftime("%Y%m%d_%H%M%S")}
 # ---
 

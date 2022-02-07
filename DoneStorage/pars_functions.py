@@ -2,8 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 from scipy import stats
 import pandas as pd
-from six.moves import urllib
-import csv
+
 
 
 def c_dis_fullname():
