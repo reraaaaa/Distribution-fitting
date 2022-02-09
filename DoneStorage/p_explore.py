@@ -193,8 +193,8 @@ def p_explore():
 
     # Расширитель свойств отображения рисунка
     with make_expanders("Настройка отображения"):
-        st.markdown("**Select Figure Mode:**")
-        plot_mode = st.radio("Options", ('Dark Mode', 'Light Mode'))
+        st.markdown("**Выберите режим фигуры:**")
+        plot_mode = st.radio("Опции", ('Dark Mode', 'Light Mode'))
         st.markdown("**Что показать на рисунке?**")
         select_hist = st.checkbox('Гистограмма', value=True)
 
