@@ -303,6 +303,7 @@ def p_explore():
     # Здесь я определяю класс Figure
     #######  I define a Figure class here #######
     class Figure:
+
         """ Figure class: used to display and manipulate Figure props. """
 
         xlabel = 'X value'
@@ -340,7 +341,7 @@ def p_explore():
                 'quant1_color': '#c7e9b4',
                 'quant2_color': '#7fcdbb',
                 'quant3_color': '#41b6c4',
-                }
+            }
 
         if plot_mode == 'Light Mode':
             colors = {
@@ -354,9 +355,10 @@ def p_explore():
                 'quant1_color': '#b2182b',
                 'quant2_color': '#35978f',
                 'quant3_color': '#b35806',
-                }
+            }
 
-        def __init__(self, x, r, rv, xlabel, ylabel, plot_mode, global_rc_params, lines, colors):
+        def __init__(self, x, r, rv, xlabel, ylabel,
+                     plot_mode, global_rc_params, lines, colors):
             """ Set properties """
 
             self.x = x
@@ -449,7 +451,8 @@ def p_explore():
                             showfliers=False
                             )
 
-            for element in ['boxes', 'whiskers', 'fliers', 'means', 'medians', 'caps']:
+            for element in ['boxes', 'whiskers', 'fliers', 'means', \
+                            'medians', 'caps']:
                 plt.setp(bp[element], color=self.colors['boxplot_lines_color'])
             for patch in bp['boxes']:
                 patch.set(facecolor=self.colors['boxplot_face_color'])
@@ -583,7 +586,8 @@ def p_explore():
 
                 # In case all distribution prop. from ax[0] are off set the
                 # boxplot on the ax[0] if the boxplot is on.
-                if (select_cdf == False and select_pdf == False and select_hist == False and select_sf == False):
+                if (select_cdf == False and select_pdf == False \
+                        and select_hist == False and select_sf == False):
 
                     fig, ax = Figure.get_figure(self, 'single')
 
@@ -626,7 +630,9 @@ def p_explore():
                 legend.get_frame().set_edgecolor("#525252")
 
             # If nothing is selected from the 'What to show on the Figure'
-            if (select_cdf == False and select_pdf == False and select_hist == False and select_boxplot == False and select_sf == False):
+            if (select_cdf == False and select_pdf == False \
+                    and select_hist == False and select_boxplot == False \
+                    and select_sf == False):
                 fig, ax = Figure.get_figure(self, 'single')
 
                 ax.text(0.1, 0.5, 'Tabula rasa',
