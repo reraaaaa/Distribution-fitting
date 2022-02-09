@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Created on 03/01/2022
 Aauthor: D-one
@@ -520,14 +521,14 @@ def p_explore():
 
             # Streamlit control - checkboxes for sigma1/2/3: on/off
             if s1:
-                s = 1
+                s=1
                 which_s(self, s)
 
             if s2:
-                s = 2
+                s=2
                 which_s(self, s)
             if s3:
-                s = 3
+                s=3
                 which_s(self, s)
 
         def histogram(self, ax):
@@ -714,8 +715,7 @@ def p_explore():
             names = []
             ps = []
             for i, param in enumerate(sliders_params[0:-2]):
-                param_name = c_dis_stats_name().get(f'{select_distribution}')
-                    #.shapes.split(', ')
+                param_name = c_dis_stats_name().get(f'{select_distribution}').shapes.split(', ')
                 name = f'{param_name[i]}'
                 p = f'{param_name[i]}={param}'
                 names.append(name)
