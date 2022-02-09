@@ -187,39 +187,30 @@ def page_explore():
             
         return x, r, rv
     
-    x1, r1, rv1 = get_multi_parameters(sliders_params)    
-    
-    
-    # Getting equations to display
-    # Due to several different formatting of the equations, in order for them
-    # to properly display in latex mode, I am using markdown for a few:
+    x1, r1, rv1 = get_multi_parameters(sliders_params)
+
+    # Получение уравнений для отображения. Из-за нескольких различных форматов
+    # уравнений, чтобы они правильно отображались в латексном режиме, используем уценку:
     if select_distribution in functions_dic.keys():
-    
-        if select_distribution == 'crystalball' \
-            or select_distribution == 'f' \
-            or select_distribution == 'genextreme' \
-            or select_distribution == 'loglaplace':            
+        if select_distribution == 'crystalball' or select_distribution == 'f' or select_distribution == 'genextreme' or select_distribution == 'loglaplace':
             st.markdown(f'{functions_dic[select_distribution]}')
         else:        
             st.latex(f'{functions_dic[select_distribution]}')
     
-    # Additional as I noticed that it takes long to compute levy_stable
+    # ополнительно, поскольку я заметил, что вычисление levy_stable занимает много времени
     if select_distribution == 'levy_stable':
-        st.write('*Note: it take longer to compute.')
+        st.write('*Примечание: для вычисления требуется больше времени.')
     
-    # Figure display properties expander
-    with make_expanders("Tweak display"):
-    
-        st.markdown("**Select Figure Mode:**")
-        plot_mode = st.radio("Options", ('Dark Mode', 'Light Mode'))   
-            
-        st.markdown("**What to show on the Figure?**")
-
+    # Расширитель свойств отображения рисунка
+    with make_expanders("астройка отображения"):
+        st.markdown("**Выберите режим графика:**")
+        plot_mode = st.radio("Режим", ('Темный режим', 'Световые режимы'))
+        st.markdown("**Что показать на графике**")
         select_hist = st.checkbox('Гистограмма', value=True)
-        
-        # Put checkboxes for PDF and Shine in a column
-        # If PDF is True (on): Shine can be True/False (on/off)
-        # If PDF checkbox is False, remove Shine checkbox
+
+        # Поставьте галочки для PDF и Shine в столбик. Если PDF имеет значение True (вкл.):
+        # Shine может быть True/False (вкл./выкл.).
+        # Если флажок PDF установлен False, снимите флажок Shine.
         select_pdf, select_pdf_shine = st.columns(2)
         with select_pdf:
             select_pdf = st.checkbox('PDF', value=True)
@@ -229,7 +220,7 @@ def page_explore():
                 with select_pdf_shine:
                     select_pdf_shine = st.checkbox('Shine', value=True)
         
-        # Same functionality as for the PDF above
+        # Та же функциональность, что и для PDF выше
         select_cdf, select_cdf_shine = st.columns(2)
         with select_cdf:
             select_cdf = st.checkbox('CDF', value=False)
@@ -239,18 +230,18 @@ def page_explore():
                 with select_cdf_shine:
                     select_cdf_shine = st.checkbox('Shine ', value=True)    
 
-        # Show/Hide and explore 
+        # Показать/скрыть и исследовать
         if select_cdf == False:
             select_mark_P = st.empty()
             x_cdf = st.empty()
         else:    
             select_mark_P = st.checkbox('P(X<=x)', value=False)        
             if select_mark_P:
-                x_cdf = st.slider('Set x value to get: (x, P(X<=x))',
-                      min_value = round(min(r1),2),
-                      value = 0.5,
-                      max_value = round(max(r1),2), 
-                      step = 0.10)
+                x_cdf = st.slider('Установите значение x, чтобы получить: (x, P(X<=x))',
+                                  min_value=round(min(r1), 2),
+                                  value=0.5,
+                                  max_value=round(max(r1), 2),
+                                  step=0.10)
         
         # Same functionality as for the PDF/CDF above
         select_sf, select_sf_shine = st.columns(2)
