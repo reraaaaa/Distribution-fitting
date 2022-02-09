@@ -196,7 +196,7 @@ def p_explore():
         st.markdown("**Выберите режим графика:**")
         plot_mode = st.radio("Режим", ('Темный режим', 'Световые режимы'))
         st.markdown("**Что показать на графике**")
-        select_hist = st.checkbox('Histogram', value=True)
+        select_hist = st.checkbox('Гистограмма', value=True)
 
         # Поставьте галочки для PDF и Shine в столбик. Если PDF имеет значение True (вкл.):
         # Shine может быть True/False (вкл./выкл.).

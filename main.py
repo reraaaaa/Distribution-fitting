@@ -6,7 +6,7 @@ Aauthor: D-one
 # Streamlit
 
 import streamlit as st
-from DoneStorage.page_explore import page_explore
+from DoneStorage.p_explore import p_explore
 from DoneStorage.p_fitting import p_fitting
 from DoneStorage.p_introduction import p_introduction
 
@@ -30,7 +30,7 @@ st.sidebar.write(" ")
 def main():
     pages = {
         "Главная": p_introduction,
-        "База распределений": page_explore,
+        "База распределений": p_explore,
         "Подбор закона распределения": p_fitting,
     }
     st.sidebar.title("Основные параметры")
