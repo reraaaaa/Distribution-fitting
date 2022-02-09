@@ -798,8 +798,6 @@ def page_explore():
     # Have to place un-indented, otherwise py code will be indented
     generate_code = f"""
 # -*- coding: utf-8 -*-
-# Generated using Distribution Analyser:
-# https://github.com/rdzudzar/DistributionAnalyser
 # {time.strftime("%Y%m%d_%H%M%S")}
 # ---
 
