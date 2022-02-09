@@ -104,7 +104,8 @@ def p_explore():
                             sliders_params.append(slider_i)
 
                         if vary_parameters_mode == 'Ручной ввод значений параметров':
-                            manual = float(st.text_input('Значение по умолчанию: ' + '{}'.format(param) + ' = ' + f'{parameter_value}', float("{:.2f}".format(parameter_value))))
+                            manual = float(st.text_input('Значение по умолчанию: ' + '{}'.format(param) + ' = '
+                                                         + f'{parameter_value}', float("{:.2f}".format(parameter_value))))
                             sliders_params.append(manual)
                     except:
                         step_value = 0.10
@@ -264,10 +265,9 @@ def p_explore():
         # Поскольку виджеты еще не поддерживают латекс, это хакерский способ добавить сигму
         # рядом с каждым флажком, используя столбцы.
         st.markdown("**Область тени **")
-        left_std, sig1, middle_std, sig2, right_std, sig3 = \
-            st.columns([0.012, 0.044,
-                        0.02, 0.038,
-                        0.02, 0.038])
+        left_std, sig1, middle_std, sig2, right_std, sig3 = st.columns([0.012, 0.044,
+                                                                        0.02, 0.038,
+                                                                        0.02, 0.038])
         with sig1:
             st.markdown("1$\sigma$")
         with left_std:
@@ -307,8 +307,8 @@ def p_explore():
 
         """ Figure class: used to display and manipulate Figure props. """
 
-        xlabel = 'X value'
-        ylabel = 'Density'
+        xlabel = 'X значение'
+        ylabel = 'Плотность'
 
         global_rc_params = {
             'legend.fontsize': 12,
