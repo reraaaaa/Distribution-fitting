@@ -718,6 +718,7 @@ def p_explore():
                 param_name = c_dis_stats_name().get(f'{select_distribution}').shapes.split(', ')
                 name = f'{param_name[i]}'
                 p = f'{param_name[i]}={param}'
+
                 names.append(name)
                 ps.append(p)
 
@@ -735,7 +736,7 @@ def p_explore():
         if len(name) == 0:
             name = ''
         else:
-            name = str([i for i in name]).strip(" [] ").strip("'").replace("'", '') + ','
+            name = str([i for i in name]).strip(" [] ").strip("'").replace("'", '')+','
         return name
 
     name = get_n(name)
