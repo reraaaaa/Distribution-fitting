@@ -112,24 +112,22 @@ def page_explore():
                         step_value = 0.10
                         slider_i = sliders()  
                         sliders_params.append(slider_i)
-                
-                # Add a note to user so that they know what to do in case 
-                # they select a parameter value which is not valid.
-                #st.markdown("**Notes**")
-                
-                #st.info(
+
+                # Добавим примечание для пользователя, чтобы он знал, что делать,
+                # если выберет недопустимое значение параметра.
+                # st.markdown("**Notes**")
+                # st.info(
                 #        """
-                #        To shift and/or scale the distribution use 
-                #        the **loc** and **scale** parameters. In case of
-                #        **Value Error**: you probably selected a shape
-                #        parameter value for which a distribution is not defined
-                #        (most often they can't be $$\leq$$0), in that case just
-                #         select a different value.
+                #        Для смещения и/или масштабирования распределения используйте
+                #        параметры **loc** и **scale**. В случае **Ошибки значения**:
+                #        возможно, вы выбрали значение параметра формы, для которого не
+                #        определено распределение (чаще всего они не могут быть $$\leq$$0),
+                #        в этом случае просто выберите другое значение.
                 #        """
                 #        )
-                
-                # For each selected distribution create a link to the 
-                # official SciPy documentation page about that function.
+
+                # Для каждого выбранного распределения создадим ссылку на
+                # официальную страницу документации SciPy об этой функции.
                 st.markdown("**Официальная документация SciPy:**")
                 st.info(f"""
                         Подробнее о: 
@@ -142,59 +140,50 @@ def page_explore():
         sliders_params = obtain_functional_data()
     
     
-    # Generate title based on the selected distribution
+    # Создать заголовок на основе выбранного распределения
     if select_distribution:
         st.markdown(f"<h1 style='text-align: center;'>{fullname_dic[select_distribution]}</h1>", unsafe_allow_html=True)
     
     def get_multi_parameters(*c_params):
-        """
-        This function accepts multiple arguments which will be function 
-        parameter values. Each function have 2-6 parameters, two being always
-        the same: loc and scale.
+        # Эта функция принимает несколько аргументов, которые будут значениями
+        # параметров функции. Каждая функция имеет от 2 до 6 параметров, два из которых
+        # всегда одинаковы: loc и scale.
+        # Аргументы:
+        #   *c_params : список параметров функции распределения
+        # вернет:
+        #   x: массив float64 - Генерируются равномерно расположенные числа
+        #   r: массив float64 - Сгенерированные случайные числа с использованием выбранного распределения.
+        #   rv: frozen распределение
 
-        Parameters
-        ----------
-        *c_params : a list of parameters of the distribution function.
+        # Размер выборки
 
-        Returns
-        -------
-        x : array of float64
-            Generated evenly spaced numbers.
-        r : array of float64
-            Generated random numbers using the selected distribution.
-        rv : frozen distribution
-
-        """
-        
-        # Sample size
         size = 400
-        # Current scipy functions have from 2 to 6 parameters (counting loc & 
-        # scale) which will be in *c_params - as obtained from sliders/input box  
-    
-        # To be able to use shape parameters and loc/scale values
-        # I just tell which are which, as loc/scale are always second to last and last        
+        # Текущие scipy-функции имеют от 2 до 6 параметров (считая loc и scale),
+        # которые будут в *c_params - как получено из ползунков/поля ввода.
+        # Чтобы иметь возможность использовать параметры формы и значения loc/scale,
+        # я просто говорю, какие есть какие, поскольку loc/scale всегда предпоследние и последние.
+
         for j, param in enumerate(c_params):
 
-            # Returns the value of the named attribute of an object
+            # Возвращает значение именованного атрибута объекта
             dist = getattr(stats, select_distribution)
     
-            # Generate evenly spaced numbers over a specified interval
+            # Сгенерировать равномерно распределенные числа в течение заданного интервала
             x = np.linspace(dist.ppf(0.001, *c_params[j][0:(len(*c_params)-2)],
-                                     loc = c_params[0][-2],
-                                     scale = c_params[0][-1]),
+                                     loc=c_params[0][-2],
+                                     scale=c_params[0][-1]),
                             dist.ppf(0.999, *c_params[j][0:(len(*c_params)-2)],
-                                     loc = c_params[0][-2],
-                                     scale = c_params[0][-1]), size)
-                
-    
-            # Create a frozen random variable "RV" using function parameters
-            # It will be used to show the PDF
-            rv = dist(*c_params[j][0:(len(*c_params)-2)], loc = c_params[0][-2], scale = c_params[0][-1])
-    
-            # Generate random numbers using the selected distribution
-            # These will be used for making histogram
+                                     loc=c_params[0][-2],
+                                     scale=c_params[0][-1]), size)
+
+            # Создайте замороженную случайную величину «RV», используя параметры функции
+            # Она будет использоваться для отображения PDF
+            rv = dist(*c_params[j][0:(len(*c_params)-2)], loc=c_params[0][-2], scale=c_params[0][-1])
+
+            # Генерация случайных чисел, используя выбранное распределение
+            # Они будут использоваться для построения гистограммы
             r = dist.rvs(*c_params[j][0:(len(*c_params)-2)], loc = c_params[0][-2],
-                         scale = c_params[0][-1], size=size)
+                         scale=c_params[0][-1], size=size)
             
         return x, r, rv
     
