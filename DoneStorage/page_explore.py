@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-# Package imports
 import streamlit as st
 from scipy import stats
 from scipy.stats.mstats import mquantiles
@@ -10,94 +9,81 @@ import matplotlib.pyplot as plt
 import time
 import base64
 
-# Helper function imports
-# These are pre-computed so that they don't slow down the App
 from DoneStorage.pars_functions import (c_dis_name,
-                            c_dis_stats_name,
-                            c_dis_dictionaries,
-                            )
+                                        c_dis_stats_name,
+                                        c_dis_dictionaries,
+                                        )
 
 
 def page_explore():
-    """ 
-    The first page in this app made with Streamlit is for an interactive 
-    exploration of the continuous distributions that are available in SciPy.
-    """
 
-
-    doc_dic, functions_dic, fullname_dic, \
-    parameters_dic, url_dic = c_dis_dictionaries()
+    doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = c_dis_dictionaries()
     
     def make_expanders(expander_name, sidebar=True):
-        """ Set up expanders which contains a set of options. """
+        """ Настройка расширителей, которые содержат набор опций. """
         if sidebar:         
             try:
                 return st.sidebar.expander(expander_name)
             except:
                 return st.sidebar.beta_expander(expander_name)
     
-    st.sidebar.subheader("To explore:")
-    with make_expanders("Select distribution"):
-    
+    st.sidebar.subheader("Обзор:")
+    with make_expanders("Выбрать распределение"):
 
-        # Distribution names
         display = c_dis_name()
         
-        # Create select box widget containing all SciPy function
+        # Создать виджет поля выбора, содержащий все функции SciPy
         select_distribution = st.selectbox(
-             'Click below (or type) to choose a distribution',
+             'Нажмите ниже (или введите), чтобы выбрать дистрибутив',
              display)
         
-        st.markdown("**Parameters**")
+        st.markdown("**Параметры**")
                     
         def obtain_functional_data():
             """
-            This function will create sliders (or input boxes) for
-            each available parameter of the selected distribution. 
-            Sliders will initiate with the parameter default value, as 
-            obtained from the SciPy library. 
-            Advanced options include sliders with smaller step interval, or
-            input boxes if Users want to manually specify parameter values.
+            Эта функция создаст ползунки (или поля ввода) для каждого доступного
+            параметра выбранного распределения. Ползунки будут запускаться со значением
+            параметра по умолчанию, полученным из библиотеки SciPy. Дополнительные параметры
+            включают ползунки с меньшим интервалом шага или поля ввода, если пользователи хотят
+            вручную указать значения параметров.
             """
 
             # parameters_dic:
-            # See helper function for details; output example:
+            # Подробности смотрите во вспомогательной функции; пример вывода:
             # 'alpha': {'a': '3.57', 'loc': '0.00', 'scale': '1.00'},
             
-            # Advance mode will contain few more options
-            advanced_mode = st.checkbox("Click to fine-tune parameters",  
+            # Расширенный режим будет содержать несколько дополнительных опций
+            advanced_mode = st.checkbox("Нажмите, чтобы настроить параметры",
                                         value=False)
                                     
             if advanced_mode:
-                vary_parameters_mode = st.radio("Available options:",
-                                            ('Slider stepping interval: 0.10',
-                                             'Slider stepping interval: 0.01',
-                                             'Manually input parameter values')
-                                            )
+                vary_parameters_mode = st.radio("Доступные опции:",
+                                                ('Интервал шага ползунка: 0.10',
+                                                 'Интервал шага ползунка: 0.01',
+                                                 'Ручной ввод значений параметров')
+                                                )
 
-            # "select_distribution" is defined streamlit selectbox
+            # "select_distribution" определяется полем выбора с подсветкой
             if select_distribution in parameters_dic.keys():
                 sliders_params = []
-                # Create slider for each parameter
+                # Создайте ползунок для каждого параметра
                 for i, param in enumerate(parameters_dic[f'{select_distribution}']):
                     parameter_value = float(parameters_dic.get(f'{select_distribution}').get(param))
 
-                    # As the majority of the parameters are not defined for
-                    # values below 0; I will limit minimum value to 0.01.
-                    # If user know that they can go below, it's possible to 
-                    # enter those values manually.
-                    # Scale can not be 0 or less than
+                    #Так как большинство параметров не определены для
+                    # значения ниже 0; Я ограничу минимальное значение до 0,01.
+                    # Если пользователь знает, что он может опуститься ниже, можно ввести эти значения вручную.
+                    # Масштаб не может быть 0 или меньше
                     min_param_value = 0.01
     
                     def sliders():
                         """
-                        Function that defines a slider. It's going to be
-                        initiated with the default value as defined in SciPy.
-                        Slider min value of 0.01; max value of 10 - are added
-                        arbitrary.
+                        Функция, определяющая ползунок. Он будет запущен со значением по умолчанию,
+                        определенным в SciPy. Минимальное значение ползунка 0,01;
+                        максимальное значение 10 - добавляются произвольно.
                         """
 
-                        slider_i = st.slider('Default value: '+'{}'.format(param)+' = '+f'{parameter_value}',
+                        slider_i = st.slider('Значение по умолчанию: '+'{}'.format(param)+' = '+f'{parameter_value}',
                                    min_value = min_param_value,
                                    value = float("{:.2f}".format(parameter_value)),
                                    max_value = 10.00,
@@ -105,8 +91,8 @@ def page_explore():
                         
                         return slider_i
                     
-                    # Doing try and except which will allow slider stepping
-                    # interval to be changed in the advanced mode.
+                    # Выполнение попыток и исключений, которые позволят изменить
+                    # интервал шага ползунка в расширенном режиме.
                     try:
                         if vary_parameters_mode == 'Slider stepping interval: 0.10':
                             step_value = 0.10
