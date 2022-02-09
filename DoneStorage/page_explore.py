@@ -226,7 +226,7 @@ def page_explore():
             
         st.markdown("**What to show on the Figure?**")
 
-        select_hist = st.checkbox('Histogram', value=True)
+        select_hist = st.checkbox('Гистограмма', value=True)
         
         # Put checkboxes for PDF and Shine in a column
         # If PDF is True (on): Shine can be True/False (on/off)

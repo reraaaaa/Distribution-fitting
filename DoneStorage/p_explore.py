@@ -83,7 +83,7 @@ def p_explore():
                         # определенным в SciPy. Минимальное значение ползунка 0,01;
                         # максимальное значение 10 - добавляются произвольно.
 
-                        slider_i = st.slider('Значение по умолчанию: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
+                        slider_i = st.slider('Значение по умолчанию: '+'{}'.format(param)+' = '+f'{parameter_value}',
                                              min_value=min_param_value,
                                              value=float("{:.2f}".format(parameter_value)),
                                              max_value=10.00,
@@ -104,8 +104,7 @@ def p_explore():
                             sliders_params.append(slider_i)
 
                         if vary_parameters_mode == 'Ручной ввод значений параметров':
-                            manual = float(st.text_input('Значение по умолчанию: ' + '{}'.format(param) + ' = '
-                                                         + f'{parameter_value}', float("{:.2f}".format(parameter_value))))
+                            manual = float(st.text_input('Значение по умолчанию: '+'{}'.format(param)+' = '+f'{parameter_value}', float("{:.2f}".format(parameter_value))))
                             sliders_params.append(manual)
                     except:
                         step_value = 0.10
@@ -170,13 +169,12 @@ def p_explore():
 
             # Создайте замороженную случайную величину «RV», используя параметры функции
             # Она будет использоваться для отображения PDF
-            rv = dist(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2],
-                      scale=c_params[0][-1])
+            rv = dist(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2], scale=c_params[0][-1])
 
             # Генерация случайных чисел, используя выбранное распределение
             # Они будут использоваться для построения гистограммы
-            r = dist.rvs(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2],
-                         scale=c_params[0][-1], size=size)
+            r = dist.rvs(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2], scale=c_params[0][-1], size=size)
+
         return x, r, rv
 
     x1, r1, rv1 = get_multi_parameters(sliders_params)
@@ -184,10 +182,7 @@ def p_explore():
     # Получение уравнений для отображения. Из-за нескольких различных форматов
     # уравнений, чтобы они правильно отображались в латексном режиме, используем уценку:
     if select_distribution in functions_dic.keys():
-        if select_distribution == 'crystalball' \
-                or select_distribution == 'f' \
-                or select_distribution == 'genextreme' \
-                or select_distribution == 'loglaplace':
+        if select_distribution == 'crystalball' or select_distribution == 'f' or select_distribution == 'genextreme' or select_distribution == 'loglaplace':
             st.markdown(f'{functions_dic[select_distribution]}')
         else:
             st.latex(f'{functions_dic[select_distribution]}')
@@ -201,7 +196,7 @@ def p_explore():
         st.markdown("**Выберите режим графика:**")
         plot_mode = st.radio("Режим", ('Темный режим', 'Световые режимы'))
         st.markdown("**Что показать на графике**")
-        select_hist = st.checkbox('Гистограмма', value=True)
+        select_hist = st.checkbox('Histogram', value=True)
 
         # Поставьте галочки для PDF и Shine в столбик. Если PDF имеет значение True (вкл.):
         # Shine может быть True/False (вкл./выкл.).
