@@ -13,9 +13,9 @@ import matplotlib.pyplot as plt
 import time
 import base64
 
-from DoneStorage.pars_functions import (c_dis_dictionaries,
-                                        c_dis_name,
+from DoneStorage.pars_functions import (c_dis_name,
                                         c_dis_stats_name,
+                                        c_dis_dictionaries,
                                         )
 
 def p_explore():
