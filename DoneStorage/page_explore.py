@@ -95,18 +95,18 @@ def page_explore():
                     # Выполнение попыток и исключений, которые позволят изменить
                     # интервал шага ползунка в расширенном режиме.
                     try:
-                        if vary_parameters_mode == 'Slider stepping interval: 0.10':
+                        if vary_parameters_mode == 'Интервал шага ползунка: 0.10':
                             step_value = 0.10
                             slider_i = sliders()
                             sliders_params.append(slider_i)
                         
-                        if vary_parameters_mode == 'Slider stepping interval: 0.01':
+                        if vary_parameters_mode == 'Интервал шага ползунка: 0.01':
                             step_value = 0.01
                             slider_i = sliders()
                             sliders_params.append(slider_i)                                
                     
-                        if vary_parameters_mode == 'Manually input parameter values':
-                            manual = float(st.text_input('Default value: '+'{}'.format(param)+' = '+f'{parameter_value}', float("{:.2f}".format(parameter_value))))
+                        if vary_parameters_mode == 'Ручной ввод значений параметров':
+                            manual = float(st.text_input('Значение по умолчанию: '+'{}'.format(param)+' = '+f'{parameter_value}', float("{:.2f}".format(parameter_value))))
                             sliders_params.append(manual)
                     except:
                         step_value = 0.10
@@ -130,9 +130,9 @@ def page_explore():
                 
                 # For each selected distribution create a link to the 
                 # official SciPy documentation page about that function.
-                st.markdown("**SciPy official documentation:**")
+                st.markdown("**Официальная документация SciPy:**")
                 st.info(f"""
-                        Read more about: 
+                        Подробнее о: 
                         [**{url_dic[select_distribution][1]}**]\
                             ({url_dic[select_distribution][0]})
                         """)

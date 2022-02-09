@@ -353,8 +353,7 @@ def p_explore():
                 'quant3_color': '#b35806',
             }
 
-        def __init__(self, x, r, rv, xlabel, ylabel,
-                     plot_mode, global_rc_params, lines, colors):
+        def __init__(self, x, r, rv, xlabel, ylabel, plot_mode, global_rc_params, lines, colors):
             """ Set properties """
 
             self.x = x
