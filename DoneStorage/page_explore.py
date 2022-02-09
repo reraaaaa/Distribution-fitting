@@ -203,10 +203,10 @@ def page_explore():
     
     # Расширитель свойств отображения рисунка
     with make_expanders("астройка отображения"):
-        st.markdown("**Выберите режим графика:**")
-        plot_mode = st.radio("Режим", ('Темный режим', 'Световые режимы'))
-        st.markdown("**Что показать на графике**")
-        select_hist = st.checkbox('Гистограмма', value=True)
+        st.markdown("**Select Figure Mode:**")
+        plot_mode = st.radio("Options", ('Dark Mode', 'Light Mode'))
+        st.markdown("**What to show on the Figure?**")
+        select_hist = st.checkbox('Histogram', value=True)
 
         # Поставьте галочки для PDF и Shine в столбик. Если PDF имеет значение True (вкл.):
         # Shine может быть True/False (вкл./выкл.).
