@@ -195,8 +195,8 @@ def p_explore():
     with make_expanders("Настройка отображения"):
         st.markdown("**Select Figure Mode:**")
         plot_mode = st.radio("Options", ('Dark Mode', 'Light Mode'))
-        st.markdown("**What to show on the Figure?**")
-        select_hist = st.checkbox('Histogram', value=True)
+        st.markdown("**Что показать на рисунке?**")
+        select_hist = st.checkbox('Гистограмма', value=True)
 
         # Поставьте галочки для PDF и Shine в столбик. Если PDF имеет значение True (вкл.):
         # Shine может быть True/False (вкл./выкл.).
