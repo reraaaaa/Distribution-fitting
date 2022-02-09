@@ -66,6 +66,7 @@ def page_explore():
             # "select_distribution" определяется полем выбора с подсветкой
             if select_distribution in parameters_dic.keys():
                 sliders_params = []
+
                 # Создайте ползунок для каждого параметра
                 for i, param in enumerate(parameters_dic[f'{select_distribution}']):
                     parameter_value = float(parameters_dic.get(f'{select_distribution}').get(param))
