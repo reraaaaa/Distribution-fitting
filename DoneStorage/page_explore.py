@@ -179,15 +179,16 @@ def page_explore():
     
             # Generate evenly spaced numbers over a specified interval
             x = np.linspace(dist.ppf(0.001, *c_params[j][0:(len(*c_params)-2)],
-                                     loc = c_params[0][-2], scale = c_params[0][-1]),
+                                     loc = c_params[0][-2],
+                                     scale = c_params[0][-1]),
                             dist.ppf(0.999, *c_params[j][0:(len(*c_params)-2)],
-                                     loc = c_params[0][-2], scale = c_params[0][-1]), size)
+                                     loc = c_params[0][-2],
+                                     scale = c_params[0][-1]), size)
                 
     
             # Create a frozen random variable "RV" using function parameters
             # It will be used to show the PDF
-            rv = dist(*c_params[j][0:(len(*c_params)-2)], loc = c_params[0][-2],
-                      scale = c_params[0][-1])
+            rv = dist(*c_params[j][0:(len(*c_params)-2)], loc = c_params[0][-2], scale = c_params[0][-1])
     
             # Generate random numbers using the selected distribution
             # These will be used for making histogram
