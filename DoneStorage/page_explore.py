@@ -12,7 +12,7 @@ import base64
 
 # Helper function imports
 # These are pre-computed so that they don't slow down the App
-from pars_functions import (c_dis_name,
+from DoneStorage.pars_functions import (c_dis_name,
                             c_dis_stats_name,
                             c_dis_dictionaries,
                             )
