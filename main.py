@@ -38,14 +38,14 @@ def main():
 
     page = st.sidebar.radio("Выбор:", tuple(pages.keys()))
 
-    # Отобразить выбранную страницу
+    # Отобразить выбранную страницу 
 
     pages[page]()
     # О нас
 
     st.sidebar.header("О нас")
     st.sidebar.warning(
-        """
+        """ 
     доп инфа
     """
     )
