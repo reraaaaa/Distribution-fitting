@@ -187,6 +187,6 @@ def c_dis_dictionaries():
 
     return doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic
 
-c_dis = c_dis_dictionaries()
+c_dis = c_dis_stats_name()
 
 print(c_dis)

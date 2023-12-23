@@ -26,7 +26,7 @@ def page_explore():
     st.sidebar.subheader("Обзор:")
     with make_expanders("Выбрать распределение"):
 
-        display = c_dis_name()
+        display = DistributionParser.get_distribution_names()
         
         # Создать виджет поля выбора, содержащий все функции SciPy
         select_distribution = st.selectbox(
@@ -740,7 +740,7 @@ def page_explore():
             names = []
             ps = []
             for i, param in enumerate(sliders_params[0:-2]):
-                param_name = c_dis_stats_name().get(f'{select_distribution}').shapes.split(', ')
+                param_name = DistributionParser.get_dictionaries_stats().get(f'{select_distribution}').shapes.split(', ')
                 name = f'{param_name[i]}'
                 p = f'{param_name[i]}={param}'
                 

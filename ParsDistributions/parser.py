@@ -41,13 +41,20 @@ class DistributionParser:
         self.docstrings = self._fetch_distribution_docstrings()
         self.parameters = self._fetch_distribution_parameters()
         self.dictionaries = self._generate_distribution_dictionaries()
+        self.stats = self._fetch_dictionaries_stats()
 
     def _fetch_distributions(self):
+        """
+        :return: ['Alpha Distribution', 'Anglit Distribution',...
+        """
         div = self.soup.find(id=self.DISTRIBUTION_ID)
         distributions = [li.text for li in div.find_all("li", {"class": "toctree-l1"})]
         return sorted(set(distributions))
 
     def _fetch_distribution_hrefs(self):
+        """
+        :return: ['continuous_alpha.html', 'continuous_anglit.html',...
+        """
         div = self.soup.find(id=self.DISTRIBUTION_ID)
         hrefs = [link['href'] for link in div.find_all(class_='reference internal', href=True) if
                  not link['href'].startswith('#')]
@@ -57,24 +64,46 @@ class DistributionParser:
         return sorted(set(hrefs))
 
     def _generate_distribution_urls(self):
+        """
+        :return: ['https://scipy.github.io/devdocs/tutorial/stats/continuous_alpha.html',...
+        """
         hrefs = self._fetch_distribution_hrefs()
         return sorted(set(f'https://scipy.github.io/devdocs/tutorial/stats/{href}' for href in hrefs))
 
     def _fetch_distribution_docstrings(self):
+        """
+        :return: info docs text...
+        """
         names = self._extract_distribution_names()
         return [getattr(stats, name).__doc__ for name in names]
 
     def _extract_distribution_names(self):
+        """
+        :return: ['alpha', 'anglit', 'arcsine',...
+        """
         hrefs = self._fetch_distribution_hrefs()
         return [href.replace('continuous_', '').replace('.html', '') for href in hrefs]
 
+    def _fetch_dictionaries_stats(self):
+        # ['stats.alpha', 'stats.anglit', 'stats.arcsine',...]
+        names = self._extract_distribution_names()
+
+        return {name: 'stats.' + name for name in names}
+
     def _fetch_distribution_functions(self):
+        """
+        :return: [f(x, a) = \\frac{1}{x^2 \\Phi(a) \\sqrt{2\\pi}},...
+        """
         docstrings = self._fetch_distribution_docstrings()
         equations = [''.join(docstring.split('\n')[i + 2:i + 4]) for docstring in docstrings for i, line in
                      enumerate(docstring.split('\n')) if 'math::' in line]
         return equations
 
     def _fetch_distribution_parameters(self):
+        """
+        :return: [['a', 'loc', 'scale'],...
+        :return: [[3.570477051665046, 0.0, 1.0], [0.0, 1.0],...
+        """
         names = self._extract_distribution_names()
         parse_params = sorted(stats._distr_params.distcont)
         df = pd.DataFrame(parse_params, columns=['dist', 'param'])
@@ -97,6 +126,9 @@ class DistributionParser:
         return all_params_names, all_params
 
     def _generate_distribution_dictionaries(self):
+        """
+        :return: all dictionaries
+        """
         all_params_names, all_params = self._fetch_distribution_parameters()
         return {
             'doc_dic': {distribution: doc for distribution, doc in zip(self.names, self.docstrings)},
@@ -133,6 +165,9 @@ class DistributionParser:
     def get_distribution_names(self):
         return self.names
 
+    def get_dictionaries_stats(self):
+        return self.stats
+
     def get_distribution_functions(self):
         return self.equations
 
@@ -143,5 +178,4 @@ class DistributionParser:
         return self.dictionaries
 
 
-print(DistributionParser().get_distribution_hrefs())
-
+print(DistributionParser().get_distribution_names())
