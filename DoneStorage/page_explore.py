@@ -8,17 +8,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import base64
-
-from DoneStorage.pars_functions import (c_dis_name,
-                                        c_dis_stats_name,
-                                        c_dis_dictionaries,
-                                        )
+from ParsDistributions.parser import DistributionParser
 
 
 def page_explore():
 
-    doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = c_dis_dictionaries()
-    
+    doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = DistributionParser.get_dictionaries()
+
     def make_expanders(expander_name, sidebar=True):
         """ Настройка расширителей, которые содержат набор опций. """
         if sidebar:         

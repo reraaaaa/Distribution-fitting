@@ -35,6 +35,7 @@ def c_dis_hrefname():
         c_hrefname.append(i['href'])
     c_hrefname.pop(0)
     c_hrefname.pop(15)
+    c_hrefname.pop(45)
     final_c_hrefname = set(c_hrefname)
     return sorted(final_c_hrefname)
 
@@ -185,3 +186,7 @@ def c_dis_dictionaries():
     url_dic = {distribution: [url_names[i], fullname[i]] for i, distribution in enumerate(name)}
 
     return doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic
+
+c_dis = c_dis_dictionaries()
+
+print(c_dis)
