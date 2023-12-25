@@ -108,7 +108,7 @@ class Figure:
         :param line_func: Функция для генерации значений y
         :param color_key: Ключ для получения цвета линии из self.colors
         :param label: Метка для линии
-        :param select_shine: Добавлять ли эффект блеска
+        :param select_shine: Добавляет эффект блеска
         """
         n_lines = 5
         diff_linewidth = 3
