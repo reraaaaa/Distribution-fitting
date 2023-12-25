@@ -177,6 +177,3 @@ class DistributionParser:
 
     def get_dictionaries(self):
         return self.dictionaries
-
-
-print(DistributionParser().get_distribution_names())
