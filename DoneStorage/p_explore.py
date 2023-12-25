@@ -33,12 +33,26 @@ def p_explore():
             except:
                 return st.sidebar.beta_expander(expander_name)
 
+    def create_slider(param, parameter_value, step_value):
+        """ Создает ползунок с заданным параметром и значением шага. """
+        slider_i = st.slider('Значение по умолчанию: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
+                             min_value=0.01,
+                             value=float("{:.2f}".format(parameter_value)),
+                             max_value=10.00,
+                             step=step_value)
+        return slider_i
+
+    def create_manual_input(param, parameter_value):
+        """ Создает поле ввода для ручного ввода значения параметра. """
+        manual = float(st.text_input('Значение по умолчанию: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
+                                     float("{:.2f}".format(parameter_value))))
+        return manual
 
     st.sidebar.subheader("Исследовать")
+
     with make_expanders("Выбрать распределение"):
         # функция имен
         display = s.get_distribution_names()
-
         # Создать виджет окна выбора, содержащий все функции SciPy
         select_distribution = st.selectbox('Нажмите ниже (или введите), чтобы выбрать распределение', display)
         st.markdown("**Параметры**")
@@ -72,43 +86,22 @@ def p_explore():
                 for i, param in enumerate(parameters_dic[f'{select_distribution}']):
                     parameter_value = float(parameters_dic.get(f'{select_distribution}').get(param))
 
-                    # Поскольку большинство параметров не определены для значений ниже 0;
-                    # Я ограничу минимальное значение до 0,01. Если пользователь знает,
-                    # что он может опуститься ниже, можно ввести эти значения вручную.
-                    # Масштаб не может быть 0 или меньше
-                    min_param_value = 0.01
-
-                    def sliders():
-                        # Функция, определяющая ползунок. Он будет запущен со значением по умолчанию,
-                        # определенным в SciPy. Минимальное значение ползунка 0,01;
-                        # максимальное значение 10 - добавляются произвольно.
-
-                        slider_i = st.slider('Значение по умолчанию: '+'{}'.format(param)+' = '+f'{parameter_value}',
-                                             min_value=min_param_value,
-                                             value=float("{:.2f}".format(parameter_value)),
-                                             max_value=10.00,
-                                             step=step_value)
-                        return slider_i
-
                     # Выполнение попыток и исключений позволит изменить
                     # интервал шага ползунка в расширенном режиме.
                     try:
                         if vary_parameters_mode == 'Интервал шага ползунка: 0.10':
-                            step_value = 0.10
-                            slider_i = sliders()
+                            slider_i = create_slider(param, parameter_value, 0.10)
                             sliders_params.append(slider_i)
 
                         if vary_parameters_mode == 'Интервал шага ползунка: 0.01':
-                            step_value = 0.01
-                            slider_i = sliders()
+                            slider_i = create_slider(param, parameter_value, 0.01)
                             sliders_params.append(slider_i)
 
                         if vary_parameters_mode == 'Ручной ввод значений параметров':
-                            manual = float(st.text_input('Значение по умолчанию: '+'{}'.format(param)+' = '+f'{parameter_value}', float("{:.2f}".format(parameter_value))))
+                            manual = create_manual_input(param, parameter_value)
                             sliders_params.append(manual)
                     except:
-                        step_value = 0.10
-                        slider_i = sliders()
+                        slider_i = create_slider(param, parameter_value, 0.10)
                         sliders_params.append(slider_i)
 
                 # Добавим примечание для пользователя, чтобы он знал, что делать,
