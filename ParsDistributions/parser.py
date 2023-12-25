@@ -85,9 +85,10 @@ class DistributionParser:
         return [href.replace('continuous_', '').replace('.html', '') for href in hrefs]
 
     def _fetch_dictionaries_stats(self):
-        # ['stats.alpha', 'stats.anglit', 'stats.arcsine',...]
+        """
+        :return: ['stats.alpha', 'stats.anglit', 'stats.arcsine',...
+        """
         names = self._extract_distribution_names()
-
         return {name: 'stats.' + name for name in names}
 
     def _fetch_distribution_functions(self):
