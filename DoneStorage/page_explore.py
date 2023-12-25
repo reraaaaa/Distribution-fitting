@@ -67,7 +67,7 @@ def page_explore():
                 for i, param in enumerate(parameters_dic[f'{select_distribution}']):
                     parameter_value = float(parameters_dic.get(f'{select_distribution}').get(param))
 
-                    #Так как большинство параметров не определены для
+                    # Так как большинство параметров не определены для
                     # значения ниже 0; Я ограничу минимальное значение до 0,01.
                     # Если пользователь знает, что он может опуститься ниже, можно ввести эти значения вручную.
                     # Масштаб не может быть 0 или меньше
@@ -198,7 +198,7 @@ def page_explore():
         st.write('*Примечание: для вычисления требуется больше времени.')
     
     # Расширитель свойств отображения рисунка
-    with make_expanders("астройка отображения"):
+    with make_expanders("Yастройка отображения"):
         st.markdown("**Select Figure Mode:**")
         plot_mode = st.radio("Options", ('Dark Mode', 'Light Mode'))
         st.markdown("**What to show on the Figure?**")
