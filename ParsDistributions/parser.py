@@ -33,59 +33,61 @@ class DistributionParser(object):
 
     def __init__(self):
         self.soup = self._get_soup()
+        self.distributions_and_hrefs = self._fetch_distributions_and_hrefs()
         self.distributions = self._fetch_distributions()
-        self.hrefs = self._fetch_distribution_hrefs()
         self.names = self._extract_distribution_names()
-        self.equations = self._fetch_distribution_functions()
         self.urls = self._generate_distribution_urls()
         self.docstrings = self._fetch_distribution_docstrings()
+        self.equations = self._fetch_distribution_functions()
         self.parameters = self._fetch_distribution_parameters()
         self.dictionaries = self._generate_distribution_dictionaries()
-        self.stats = self._fetch_dictionaries_stats()
+        self.stat = self._fetch_dictionaries_stat()
+
+    def _get_soup(self):
+        try:
+            response = requests.get(self.BASE_URL)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            print(f"Failed to get URL {self.BASE_URL}: {e}")
+            return None
+        return BeautifulSoup(response.text, "html.parser")
+
+    def _fetch_distributions_and_hrefs(self):
+        """
+        :return: {'Alpha Distribution': 'continuous_alpha.html', 'Anglit Distribution': 'continuous_anglit.html',...}
+        """
+        div = self.soup.find(id=self.DISTRIBUTION_ID)
+        lis = div.find_all("li", {"class": "toctree-l1"})
+        distributions_and_hrefs = {}
+
+        for li in lis:
+            link = li.find(class_='reference internal', href=True)
+            if link and not link['href'].startswith('#'):
+                distributions_and_hrefs[li.text] = link['href']
+        distributions_and_hrefs.pop('Jones and Faddy Skew-T Distribution')
+        return distributions_and_hrefs
 
     def _fetch_distributions(self):
         """
         :return: ['Alpha Distribution', 'Anglit Distribution',...
         """
-        div = self.soup.find(id=self.DISTRIBUTION_ID)
-        distributions = sorted(set([li.text for li in div.find_all("li", {"class": "toctree-l1"})]))
-        # -Asymmetric Laplace Distribution
-        distributions.pop(3)
-        # -Erlang Distribution
-        distributions.pop(14)
-        # Fratio (or F) Distribution on 21
-        distributions.insert(17, distributions.pop(21))
-        # Half-Logistic Distribution on 37
-        distributions.insert(38, distributions.pop(37))
-        # - Jones and Faddy Skew-T Distribution
-        distributions.pop(46)
+        distributions_and_hrefs = self._fetch_distributions_and_hrefs()
+        distributions = list(distributions_and_hrefs.keys())
         return distributions
-
-    def _fetch_distribution_hrefs(self):
-        """
-        :return: ['continuous_alpha.html', 'continuous_anglit.html',...
-        """
-        div = self.soup.find(id=self.DISTRIBUTION_ID)
-        hrefs = [link['href'] for link in div.find_all(class_='reference internal', href=True) if
-                 not link['href'].startswith('#')]
-        hrefs.pop(0)
-        hrefs.pop(15)
-        hrefs.pop(45)
-        return sorted(set(hrefs))
 
     def _extract_distribution_names(self):
         """
         :return: ['alpha', 'anglit', 'arcsine',...
         """
-        hrefs = self._fetch_distribution_hrefs()
-        names = [href.replace('continuous_', '').replace('.html', '') for href in hrefs]
-        return sorted(set(names))
+        hrefs = list(self._fetch_distributions_and_hrefs().values())
+        names = [name.replace('continuous_', '').replace('.html', '') for name in hrefs]
+        return names
 
     def _generate_distribution_urls(self):
         """
         :return: ['https://scipy.github.io/devdocs/tutorial/stats/continuous_alpha.html',...
         """
-        hrefs = self._fetch_distribution_hrefs()
+        hrefs = list(self._fetch_distributions_and_hrefs().values())
         urls = sorted(set(f'https://scipy.github.io/devdocs/tutorial/stats/{href}' for href in hrefs))
         return urls
 
@@ -97,13 +99,13 @@ class DistributionParser(object):
         docstrings = [getattr(stats, name).__doc__ for name in names]
         return docstrings
 
-    def _fetch_dictionaries_stats(self):
+    def _fetch_dictionaries_stat(self):
         """
         :return: ['stats.alpha', 'stats.anglit', 'stats.arcsine',...
         """
         names = self._extract_distribution_names()
-        stats = {name: 'stats.' + name for name in names}
-        return stats
+        stat = {name: 'stats.' + name for name in names}
+        return stat
 
     def _fetch_distribution_functions(self):
         """
@@ -156,20 +158,14 @@ class DistributionParser(object):
                         zip(self.names, self.urls, self.distributions)}
         }
 
-    def _get_soup(self):
-        try:
-            response = requests.get(self.BASE_URL)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            print(f"Failed to get URL {self.BASE_URL}: {e}")
-            return None
-        return BeautifulSoup(response.text, "html.parser")
+    def get_distributions_and_hrefs(self):
+        return self.distributions_and_hrefs
 
     def get_distributions(self):
         return self.distributions
 
-    def get_distribution_hrefs(self):
-        return self.hrefs
+    def get_distribution_names(self):
+        return self.names
 
     def get_distribution_urls(self):
         return self.urls
@@ -177,11 +173,8 @@ class DistributionParser(object):
     def get_distribution_docstrings(self):
         return self.docstrings
 
-    def get_distribution_names(self):
-        return self.names
-
-    def get_dictionaries_stats(self):
-        return self.stats
+    def get_dictionaries_stat(self):
+        return self.stat
 
     def get_distribution_functions(self):
         return self.equations
@@ -191,5 +184,3 @@ class DistributionParser(object):
 
     def get_dictionaries(self):
         return self.dictionaries
-
-print(DistributionParser().get_dictionaries())
