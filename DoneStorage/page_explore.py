@@ -395,7 +395,8 @@ def page_explore():
             if plot_mode == 'Light Mode':
                 plt.style.use('classic')
                 plt.rcParams['figure.facecolor'] = 'white'
-    
+
+
         def pdf_cdf_lines(self, ax):
             """ How to plot the PDF/CDF lines and setup of the "Shine" """
             
