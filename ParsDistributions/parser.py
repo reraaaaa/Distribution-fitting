@@ -48,8 +48,18 @@ class DistributionParser(object):
         :return: ['Alpha Distribution', 'Anglit Distribution',...
         """
         div = self.soup.find(id=self.DISTRIBUTION_ID)
-        distributions = [li.text for li in div.find_all("li", {"class": "toctree-l1"})]
-        return sorted(set(distributions))
+        distributions = sorted(set([li.text for li in div.find_all("li", {"class": "toctree-l1"})]))
+        # -Asymmetric Laplace Distribution
+        distributions.pop(3)
+        # -Erlang Distribution
+        distributions.pop(14)
+        # Fratio (or F) Distribution on 21
+        distributions.insert(17, distributions.pop(21))
+        # Half-Logistic Distribution on 37
+        distributions.insert(38, distributions.pop(37))
+        # - Jones and Faddy Skew-T Distribution
+        distributions.pop(46)
+        return distributions
 
     def _fetch_distribution_hrefs(self):
         """
@@ -69,7 +79,7 @@ class DistributionParser(object):
         """
         hrefs = self._fetch_distribution_hrefs()
         names = [href.replace('continuous_', '').replace('.html', '') for href in hrefs]
-        return names
+        return sorted(set(names))
 
     def _generate_distribution_urls(self):
         """
@@ -181,3 +191,5 @@ class DistributionParser(object):
 
     def get_dictionaries(self):
         return self.dictionaries
+
+print(DistributionParser().get_dictionaries())
