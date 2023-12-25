@@ -63,33 +63,37 @@ class DistributionParser(object):
         hrefs.pop(45)
         return sorted(set(hrefs))
 
+    def _extract_distribution_names(self):
+        """
+        :return: ['alpha', 'anglit', 'arcsine',...
+        """
+        hrefs = self._fetch_distribution_hrefs()
+        names = [href.replace('continuous_', '').replace('.html', '') for href in hrefs]
+        return names
+
     def _generate_distribution_urls(self):
         """
         :return: ['https://scipy.github.io/devdocs/tutorial/stats/continuous_alpha.html',...
         """
         hrefs = self._fetch_distribution_hrefs()
-        return sorted(set(f'https://scipy.github.io/devdocs/tutorial/stats/{href}' for href in hrefs))
+        urls = sorted(set(f'https://scipy.github.io/devdocs/tutorial/stats/{href}' for href in hrefs))
+        return urls
 
     def _fetch_distribution_docstrings(self):
         """
         :return: info docs text...
         """
         names = self._extract_distribution_names()
-        return [getattr(stats, name).__doc__ for name in names]
-
-    def _extract_distribution_names(self):
-        """
-        :return: ['alpha', 'anglit', 'arcsine',...
-        """
-        hrefs = self._fetch_distribution_hrefs()
-        return [href.replace('continuous_', '').replace('.html', '') for href in hrefs]
+        docstrings = [getattr(stats, name).__doc__ for name in names]
+        return docstrings
 
     def _fetch_dictionaries_stats(self):
         """
         :return: ['stats.alpha', 'stats.anglit', 'stats.arcsine',...
         """
         names = self._extract_distribution_names()
-        return {name: 'stats.' + name for name in names}
+        stats = {name: 'stats.' + name for name in names}
+        return stats
 
     def _fetch_distribution_functions(self):
         """
