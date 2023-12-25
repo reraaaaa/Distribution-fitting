@@ -127,19 +127,22 @@ def p_explore():
         """
         # Размер выборки
         size = 400
-        # Возвращает значение именованного атрибута объекта
-        dist = getattr(stats, select_distribution)
-        # Extract distribution parameters, loc and scale
-        *dist_params, loc, scale = c_params
-        # Генерирация равномерно распределенных чисел в заданном интервале
-        x = np.linspace(dist.ppf(0.001, *dist_params, loc=loc, scale=scale),
-                        dist.ppf(0.999, *dist_params, loc=loc, scale=scale), size)
-        # Создайте замороженную случайную величину «RV», используя параметры функции
-        # Она будет использоваться для отображения PDF
-        rv = dist(*dist_params, loc=loc, scale=scale)
-        # Генерация случайных чисел, используя выбранное распределение
-        # Они будут использоваться для построения гистограммы
-        r = dist.rvs(*dist_params, loc=loc, scale=scale, size=size)
+        for j, param in enumerate(c_params):
+            # Возвращает значение именованного атрибута объекта
+            dist = getattr(stats, select_distribution)
+            # Генерирация равномерно распределенных чисел в заданном интервале
+            x = np.linspace(dist.ppf(0.001, *c_params[j][0:(len(*c_params) - 2)],
+                                     loc=c_params[0][-2],
+                                     scale=c_params[0][-1]),
+                            dist.ppf(0.999, *c_params[j][0:(len(*c_params) - 2)],
+                                     loc=c_params[0][-2],
+                                     scale=c_params[0][-1]), size)
+            # Создайте замороженную случайную величину «RV», используя параметры функции
+            # Она будет использоваться для отображения PDF
+            rv = dist(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2], scale=c_params[0][-1])
+            # Генерация случайных чисел, используя выбранное распределение
+            # Они будут использоваться для построения гистограммы
+            r = dist.rvs(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2], scale=c_params[0][-1], size=size)
 
         return x, r, rv
 
