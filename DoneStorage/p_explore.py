@@ -80,7 +80,7 @@ def p_explore():
                                                 )
 
             # "select_distribution" определяется полем выбора с подсветкой
-            # Создать ползунок для каждого параметра
+            # Ползунок для каждого параметра
             if select_distribution in parameters_dic.keys():
                 sliders_params = []
                 for i, param in enumerate(parameters_dic[f'{select_distribution}']):
@@ -92,11 +92,9 @@ def p_explore():
                         if vary_parameters_mode == 'Интервал шага ползунка: 0.10':
                             slider_i = create_slider(param, parameter_value, 0.10)
                             sliders_params.append(slider_i)
-
                         if vary_parameters_mode == 'Интервал шага ползунка: 0.01':
                             slider_i = create_slider(param, parameter_value, 0.01)
                             sliders_params.append(slider_i)
-
                         if vary_parameters_mode == 'Ручной ввод значений параметров':
                             manual = create_manual_input(param, parameter_value)
                             sliders_params.append(manual)
