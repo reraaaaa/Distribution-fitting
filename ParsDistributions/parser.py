@@ -4,7 +4,7 @@ from scipy import stats
 import pandas as pd
 
 
-class DistributionParser:
+class DistributionParser(object):
     """
     Класс DistributionParser предназначен для анализа и извлечения информации о статистических распределениях
     из документации SciPy. BASE_URL и DISTRIBUTION_ID — это атрибуты класса, в которых хранится URL-адрес анализируемой

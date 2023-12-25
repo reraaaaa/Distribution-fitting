@@ -12,13 +12,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import base64
-
-from ParsDistributions.parser import DistributionParser
+import ParsDistributions.parser as dps
 
 
 def p_explore():
+    s = dps.DistributionParser()
+    dictionaries = s.get_dictionaries()
 
-    doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = DistributionParser.get_dictionaries
+    doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = dictionaries.values()
 
     def make_expanders(expander_name, sidebar=True):
         # Настройка расширителей, которые содержат набор опций.
@@ -707,7 +708,7 @@ def p_explore():
             names = []
             ps = []
             for i, param in enumerate(sliders_params[0:-2]):
-                param_name = DistributionParser.get_dictionaries_stats.get(f'{select_distribution}').shapes.split(', ')
+                param_name = s.get_dictionaries_stats().get(f'{select_distribution}').shapes.split(', ')
                 name = f'{param_name[i]}'
                 p = f'{param_name[i]}={param}'
 
