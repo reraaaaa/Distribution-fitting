@@ -33,17 +33,6 @@ def p_explore():
             except:
                 return st.sidebar.beta_expander(expander_name)
 
-    def create_checkbox_with_shine(name, default=False):
-        """ Создает флажок с опцией блеска. """
-        checkbox, shine = st.columns(2)
-        with checkbox:
-            checkbox_value = st.checkbox(name, value=default)
-            if checkbox_value == False:
-                shine = st.empty()
-            else:
-                with shine:
-                    shine_value = st.checkbox('Shine', value=True)
-        return checkbox_value, shine_value
 
     st.sidebar.subheader("Исследовать")
     with make_expanders("Выбрать распределение"):
@@ -209,8 +198,27 @@ def p_explore():
         st.markdown("**Что показать на рисунке?**")
         select_hist = st.checkbox('Гистограмма', value=True)
 
-        select_pdf, select_pdf_shine = create_checkbox_with_shine('PDF', True)
-        select_cdf, select_cdf_shine = create_checkbox_with_shine('CDF')
+        # Поставьте галочки для PDF и Shine в столбик. Если PDF имеет значение True (вкл.):
+        # Shine может быть True/False (вкл./выкл.).
+        # Если флажок PDF установлен False, снимите флажок Shine.
+        select_pdf, select_pdf_shine = st.columns(2)
+        with select_pdf:
+            select_pdf = st.checkbox('PDF', value=True)
+            if select_pdf == False:
+                select_pdf_shine = st.empty()
+            else:
+                with select_pdf_shine:
+                    select_pdf_shine = st.checkbox('Shine', value=True)
+
+        # Та же функциональность, что и для PDF выше
+        select_cdf, select_cdf_shine = st.columns(2)
+        with select_cdf:
+            select_cdf = st.checkbox('CDF', value=False)
+            if select_cdf == False:
+                select_cdf_shine = st.empty()
+            else:
+                with select_cdf_shine:
+                    select_cdf_shine = st.checkbox('Shine ', value=True)
 
         # Показать/скрыть и исследовать
         if select_cdf == False:
@@ -225,16 +233,28 @@ def p_explore():
                                   max_value=round(max(r1), 2),
                                   step=0.10)
 
-        select_sf, select_sf_shine = create_checkbox_with_shine('SF')
+        # Та же функциональность, что и для PDF/CDF выше
+        select_sf, select_sf_shine = st.columns(2)
+        with select_sf:
+            select_sf = st.checkbox('SF', value=False)
+            if select_sf == False:
+                select_sf_shine = st.empty()
+            else:
+                with select_sf_shine:
+                    select_sf_shine = st.checkbox('Shine   ', value=True)
 
         # Показать/скрыть блочную диаграмму
         select_boxplot = st.checkbox('Блочная диаграмма', value=True)
 
         # Показать/скрыть строки квантилей
         st.markdown("**Показать квантили:**")
-        q1 = st.checkbox('Q1', value=False)  # , [0.25,0.5,0.75]
-        q2 = st.checkbox('Q2', value=False)
-        q3 = st.checkbox('Q3', value=False)
+        left, middle, right = st.columns(3)
+        with left:
+            q1 = st.checkbox('Q1', value=False)  # , [0.25,0.5,0.75]
+        with middle:
+            q2 = st.checkbox('Q2', value=False)
+        with right:
+            q3 = st.checkbox('Q3', value=False)
 
         # Показать/скрыть заштрихованные сигма-области.
         # Поскольку виджеты еще не поддерживают латекс, это хакерский способ добавить сигму
