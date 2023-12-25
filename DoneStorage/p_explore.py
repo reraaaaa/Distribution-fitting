@@ -36,7 +36,7 @@ def p_explore():
     st.sidebar.subheader("Исследовать")
     with make_expanders("Выбрать распределение"):
         # функция имен
-        display = DistributionParser.get_distribution_names()
+        display = s.get_distribution_names()
 
         # Создать виджет окна выбора, содержащий все функции SciPy
         select_distribution = st.selectbox('Нажмите ниже (или введите), чтобы выбрать распределение', display)
