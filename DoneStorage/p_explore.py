@@ -126,7 +126,7 @@ def p_explore():
         :return rv: Frozen распределение
         """
         # Размер выборки
-        size = 1000
+        size = 500
         for j, param in enumerate(c_params):
             # Возвращает значение именованного атрибута объекта
             dist = getattr(stats, select_distribution)
