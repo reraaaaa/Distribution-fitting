@@ -22,11 +22,12 @@ def p_explore():
     doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = dictionaries.values()
 
     def make_expanders(expander_name, sidebar=True):
-        # Настройка расширителей, которые содержат набор опций.
-        # Аргументы:
-        #   expander_name: вложение
-        # вернет:
-        #   Расширение
+        """
+        Настройка расширителей, которые содержат набор опций
+        :param sidebar:
+        :param expander_name: вложение
+        :return: Расширение
+        """
         if sidebar:
             try:
                 return st.sidebar.expander(expander_name)
@@ -68,26 +69,19 @@ def p_explore():
             # parameters_dic:
             # Подробности смотрите во вспомогательной функции; пример вывода:
             # 'alpha': {'a': '3.57', 'loc': '0.00', 'scale': '1.00'},
-
-            # Расширенный режим будет содержать несколько дополнительных опций
             advanced_mode = st.checkbox("Нажмите, чтобы настроить параметры", value=False)
-
+            vary_parameters_mode = 'Интервал шага ползунка: 0.10'
             if advanced_mode:
                 vary_parameters_mode = st.radio("Доступные параметры:",
                                                 ('Интервал шага ползунка: 0.10',
                                                  'Интервал шага ползунка: 0.01',
                                                  'Ручной ввод значений параметров')
                                                 )
-
-            # "select_distribution" определяется полем выбора с подсветкой
-            # Ползунок для каждого параметра
             if select_distribution in parameters_dic.keys():
                 sliders_params = []
                 for i, param in enumerate(parameters_dic[f'{select_distribution}']):
                     parameter_value = float(parameters_dic.get(f'{select_distribution}').get(param))
 
-                    # Выполнение попыток и исключений позволит изменить
-                    # интервал шага ползунка в расширенном режиме.
                     try:
                         if vary_parameters_mode == 'Интервал шага ползунка: 0.10':
                             slider_i = create_slider(param, parameter_value, 0.10)
@@ -101,13 +95,14 @@ def p_explore():
                     except:
                         slider_i = create_slider(param, parameter_value, 0.10)
                         sliders_params.append(slider_i)
-                # если будет кривое значение, то сразу ссылка на SciPy
+
                 st.markdown("**SciPy официальная документация:**")
                 st.info(f"""
-                        Подробнее о: 
-                        [**{url_dic[select_distribution][1]}**]\
-                            ({url_dic[select_distribution][0]})
-                        """)
+                            Подробнее о: 
+                            [**{url_dic[select_distribution][1]}**]\
+                                ({url_dic[select_distribution][0]})
+                            """)
+
                 return sliders_params
 
         sliders_params = obtain_functional_data()
@@ -125,28 +120,21 @@ def p_explore():
         :return r: массив float64 - Сгенерированные случайные числа с использованием выбранного распределения.
         :return rv: Frozen распределение
         """
-        # Размер выборки
-        size = 500
-        for j, param in enumerate(c_params):
-            # Возвращает значение именованного атрибута объекта
-            dist = getattr(stats, select_distribution)
-            # Генерирация равномерно распределенных чисел в заданном интервале
-            x = np.linspace(dist.ppf(0.001, *c_params[j][0:(len(*c_params) - 2)],
-                                     loc=c_params[0][-2],
-                                     scale=c_params[0][-1]),
-                            dist.ppf(0.999, *c_params[j][0:(len(*c_params) - 2)],
-                                     loc=c_params[0][-2],
-                                     scale=c_params[0][-1]), size)
-            # Создайте замороженную случайную величину «RV», используя параметры функции
-            # Она будет использоваться для отображения PDF
-            rv = dist(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2], scale=c_params[0][-1])
-            # Генерация случайных чисел, используя выбранное распределение
-            # Они будут использоваться для построения гистограммы
-            r = dist.rvs(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2], scale=c_params[0][-1], size=size)
+        size = 400
+        dist = getattr(stats, select_distribution)
+
+        if len(c_params) < 2:
+            raise ValueError("At least two parameters are required")
+
+        *dist_params, loc, scale = c_params
+        x = np.linspace(dist.ppf(0.001, *dist_params, loc=loc, scale=scale),
+                        dist.ppf(0.999, *dist_params, loc=loc, scale=scale), size)
+        rv = dist(*dist_params, loc=loc, scale=scale)
+        r = dist.rvs(*dist_params, loc=loc, scale=scale, size=size)
 
         return x, r, rv
 
-    x1, r1, rv1 = get_multi_parameters(sliders_params)
+    x1, r1, rv1 = get_multi_parameters(*sliders_params)
 
     # Получение уравнений для отображения. Из-за нескольких различных форматов
     # уравнений, чтобы они правильно отображались в латексном режиме, используем уценку:
