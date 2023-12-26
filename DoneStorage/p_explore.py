@@ -678,7 +678,7 @@ def p_explore():
             names = []
             ps = []
             for i, param in enumerate(sliders_params[0:-2]):
-                param_name = s.get_dictionaries_stats().get(f'{select_distribution}').shapes.split(', ')
+                param_name = s.get_dictionaries_stat().get(f'{select_distribution}').shapes.split(', ')
                 name = f'{param_name[i]}'
                 p = f'{param_name[i]}={param}'
 
