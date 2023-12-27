@@ -26,12 +26,17 @@ class DistributionParser(object):
     Этот класс можно использовать для программного доступа к подробной информации о непрерывных распределениях в
     модуле scipy.stats.
     """
-    BASE_URL = 'https://scipy.github.io/devdocs/tutorial/stats/continuous.html'
-    #BASE_URL = 'https://scipy.github.io/devdocs/tutorial/stats/discrete.html'
-    DISTRIBUTION_ID = "continuous-distributions-in-scipy-stats"
-    #DISTRIBUTION_ID = "discrete-distributions-in-scipy-stats"
 
-    def __init__(self):
+    def __init__(self, type_rv):
+        """
+        :param type_rv: continuous or discrete
+        """
+        if type_rv == 'discrete':
+            self.BASE_URL = 'https://scipy.github.io/devdocs/tutorial/stats/discrete.html'
+            self.DISTRIBUTION_ID = "discrete-distributions-in-scipy-stats"
+        else:
+            self.BASE_URL = 'https://scipy.github.io/devdocs/tutorial/stats/continuous.html'
+            self.DISTRIBUTION_ID = "continuous-distributions-in-scipy-stats"
         self.soup = self._get_soup()
         self.distributions_and_hrefs = self._fetch_distributions_and_hrefs()
         self.distributions = self._fetch_distributions()
@@ -64,7 +69,11 @@ class DistributionParser(object):
             link = li.find(class_='reference internal', href=True)
             if link and not link['href'].startswith('#'):
                 distributions_and_hrefs[li.text] = link['href']
-        distributions_and_hrefs.pop('Jones and Faddy Skew-T Distribution')
+
+        if self.DISTRIBUTION_ID == "continuous-distributions-in-scipy-stats":
+            distributions_and_hrefs.pop('Jones and Faddy Skew-T Distribution')
+        else:
+            distributions_and_hrefs.pop('Beta-Negative Binomial Distribution')
         return distributions_and_hrefs
 
     def _fetch_distributions(self):
@@ -80,7 +89,10 @@ class DistributionParser(object):
         :return: ['alpha', 'anglit', 'arcsine',...
         """
         hrefs = list(self._fetch_distributions_and_hrefs().values())
-        names = [name.replace('continuous_', '').replace('.html', '') for name in hrefs]
+        if self.DISTRIBUTION_ID == "continuous-distributions-in-scipy-stats":
+            names = [name.replace('continuous_', '').replace('.html', '') for name in hrefs]
+        else:
+            names = [name.replace('discrete_', '').replace('.html', '') for name in hrefs]
         return names
 
     def _generate_distribution_urls(self):
@@ -138,7 +150,7 @@ class DistributionParser(object):
                 p_names = [sh.strip() for sh in dist.shapes.split(',')] + ['loc', 'scale']
             all_params_names.append(p_names)
             loc, scale = 0.00, 1.00
-            params = list(params) + [loc, scale]
+            params = [params, loc, scale]
             all_params.append(params)
         return all_params_names, all_params
 
@@ -151,9 +163,10 @@ class DistributionParser(object):
             'doc_dic': {distribution: doc for distribution, doc in zip(self.names, self.docstrings)},
             'functions_dic': {distribution: function for distribution, function in zip(self.names, self.equations)},
             'fullname_dic': {distribution: fullname for distribution, fullname in zip(self.names, self.distributions)},
-            'parameters_dic': {function: {param: f"{all_params[i][j]:.2f}"
-                                          for j, param in enumerate(all_params_names[i])}
-                               for i, function in enumerate(self.names)},
+            'parameters_dic': {
+                function: {param: f"{value:.2f}" for param, value in zip(all_params_names[i], all_params[i]) if
+                           isinstance(value, (int, float))}
+                for i, function in enumerate(self.names)},
             'url_dic': {distribution: [url, fullname] for distribution, url, fullname in
                         zip(self.names, self.urls, self.distributions)}
         }

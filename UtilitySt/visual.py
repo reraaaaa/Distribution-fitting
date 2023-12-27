@@ -13,8 +13,8 @@ class Figure:
     """
     Класс фигуры: используется для отображения реквизитов фигуры и управления ими.
     """
-    xlabel = 'X значение'
-    ylabel = 'Плотность'
+    x_label = 'X значение'
+    y_label = 'Плотность'
 
     global_rc_params = {
         'legend.fontsize': 12,
@@ -69,24 +69,40 @@ class Figure:
                 'quant3_color': '#b35806',
             }
 
-    def __init__(self, x, r, rv, xlabel, ylabel,
+    def __init__(self, select_hist, select_pdf_shine,
+                 select_cdf_shine, select_sf_shine, select_mark_p, x_cdf, select_boxplot,
+                 q1, q2, q3, s1, s2, s3,
+                 x, r, rv, x_label, y_label,
                  plot_mode, global_rc_params, lines):
         """
         Установка Cвойств
         :param x:
         :param r:
         :param rv:
-        :param xlabel:
-        :param ylabel:
+        :param x_label:
+        :param y_label:
         :param plot_mode:
         :param global_rc_params:
         :param lines:
         """
+        self.select_hist = select_hist
+        self.select_pdf_shine = select_pdf_shine
+        self.select_cdf_shine = select_cdf_shine
+        self.select_sf_shine = select_sf_shine
+        self.select_mark_p = select_mark_p
+        self.x_cdf = x_cdf
+        self.select_boxplot = select_boxplot
+        self.q1 = q1
+        self.q2 = q2
+        self.q3 = q3
+        self.s1 = s1
+        self.s2 = s2
+        self.s3 = s3
         self.x = x
         self.r = r
         self.rv = rv
-        self.xlabel = xlabel
-        self.ylabel = ylabel
+        self.x_label = x_label
+        self.y_label = y_label
         self.plot_mode = plot_mode
         self.global_rc_params = global_rc_params
         self.lines = lines
@@ -94,19 +110,7 @@ class Figure:
         self.select_pdf = select_pdf
         self.select_cdf = select_cdf
         self.select_sf = select_sf
-        self.select_pdf_shine = select_pdf_shine
-        self.select_cdf_shine = select_cdf_shine
-        self.select_sf_shine = select_sf_shine
-        self.select_mark_P = select_mark_P
-        self.x_cdf = x_cdf
-        self.select_boxplot = select_boxplot
-        self.select_hist = select_hist
-        self.q1 = q1
-        self.q2 = q2
-        self.q3 = q3
-        self.s1 = s1
-        self.s2 = s2
-        self.s3 = s3
+
 
     def display_mode(self):
         """
@@ -191,7 +195,7 @@ class Figure:
             if option['select']:
                 self.draw_line(ax, option['func'], option['color_key'], option['label'], option['shine'])
 
-                if option['label'] == 'CDF' and self.select_mark_P:
+                if option['label'] == 'CDF' and self.select_mark_p:
                     self.mark_point_on_cdf(ax, self.x_cdf)
 
     def boxplot(self, ax):
@@ -210,7 +214,7 @@ class Figure:
         for patch in bp['boxes']:
             patch.set(facecolor=self.colors['boxplot_face_color'])
         # Переместить метку x ниже — она будет активна, если отображается boxplot диаграмма.
-        ax.set_xlabel(self.xlabel)
+        ax.set_xlabel(self.x_label)
         # В дополнение к глобальным rcParams установим параметры графика:
         ax.spines['left'].set_visible(False)
         ax.set_yticklabels([])
@@ -264,7 +268,7 @@ class Figure:
             """
             x01 = s*self.r.std( )
             # Выберите только значения x в диапазоне сигм.
-            x1 = self.x[ (self.x > (self.r.mean()-x01)) & (self.x < (x01+self.r.mean()))]
+            x1 = self.x[(self.x > (self.r.mean()-x01)) & (self.x < (x01+self.r.mean()))]
             # Это затенит 1/2/3 сигмы, ограничивая y на границе PDF.
             ax.fill_between(x1,
                             self.rv.pdf(x1),
@@ -272,14 +276,14 @@ class Figure:
                             color=self.colors['pdf_line_color'],
                             alpha=0.2)
         # Streamlit control - checkboxes for sigma1/2/3: on/off
-        if s1:
-            s= 1
+        if self.s1:
+            s = 1
             which_s(self, s)
-        if s2:
-            s= 2
+        if self.s2:
+            s = 2
             which_s(self, s)
-        if s3:
-            s= 3
+        if self.s3:
+            s = 3
             which_s(self, s)
 
     def histogram(self, ax):
@@ -322,16 +326,16 @@ class Figure:
 
             Figure.pdf_cdf_lines(self, ax=ax[0])
 
-            if q1 or q2 or q3:
+            if self.q1 or self.q2 or self.q3:
                 Figure.quantiles(self, ax=ax[0])
 
-            if s1 or s2 or s3:
+            if self.s1 or self.s2 or self.s3:
                 Figure.sigmas(self, ax=ax[0])
 
             if self.select_hist:
                 Figure.histogram(self, ax=ax[0])
 
-            legend = ax[0].legend(bbox_to_anchor=(0,1 .02, 1 ,0 .2),
+            legend = ax[0].legend(bbox_to_anchor=(0, 1.02, 1, 0.2),
                                   loc="lower left", mode="expand",
                                   borderaxespad=0, ncol=3)
             legend.get_frame().set_edgecolor("#525252")
@@ -355,7 +359,7 @@ class Figure:
                 ax[1].set_xlim(ax[0].get_xlim())
 
                 # Move y label to apropriate ax.
-                ax[0].set_ylabel(self.ylabel)
+                ax[0].set_ylabel(self.y_label)
 
 
         else:
@@ -367,16 +371,16 @@ class Figure:
             if self.select_hist:
                 Figure.histogram(self, ax=ax)
 
-            if q1 or q2 or q3:
+            if self.q1 or self.q2 or self.q3:
                 Figure.quantiles(self, ax=ax)
 
-            if s1 or s2 or s3:
+            if self.s1 or self.s2 or self.s3:
                 Figure.sigmas(self, ax=ax)
 
-            ax.set_xlabel(self.xlabel)
-            ax.set_ylabel(self.ylabel)
+            ax.set_xlabel(self.x_label)
+            ax.set_ylabel(self.y_label)
 
-            legend = ax.legend(bbox_to_anchor=(0 ,1.02 ,1 ,0.2),
+            legend = ax.legend(bbox_to_anchor=(0, 1.02, 1, 0.2),
                                loc="lower left", mode="expand",
                                borderaxespad=0, ncol=3)
             legend.get_frame().set_edgecolor("#525252")

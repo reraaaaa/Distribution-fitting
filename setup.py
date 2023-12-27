@@ -31,6 +31,7 @@ setup(
     keywords='Distribution,fitting,',
     packages=[
         'ParsDistributions',
+        'UtilitySt'
     ],
     install_requires=REQUIREMENTS,
     setup_requires=['pytest-runner', 'flake8'],
