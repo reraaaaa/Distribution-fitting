@@ -3,6 +3,8 @@ import requests
 from scipy import stats
 import pandas as pd
 
+import ParsDistributions
+
 
 class DistributionParser(object):
     """
@@ -197,3 +199,7 @@ class DistributionParser(object):
 
     def get_dictionaries(self):
         return self.dictionaries
+
+ss = DistributionParser(type_rv='continuous').get_distribution_parameters()
+
+print(ss)

@@ -111,10 +111,11 @@ def p_explore():
     if select_distribution:
         st.markdown(f"<h1 style='text-align: center;'>{fullname_dic[select_distribution]}</h1>", unsafe_allow_html=True)
 
-    def get_multi_parameters(*c_params):
+    def get_multi_parameters(select_distribution, *c_params):
         """
         Эта функция принимает несколько аргументов, которые будут значениями параметров функции.
         Текущие scipy-функции имеют от 2 до 6 параметров, два из которых всегда одинаковы: loc и scale.
+        :param select_distribution: Name of the distribution
         :param c_params: Список параметров функции распределения
         :return x: массив float64 - Генерируются равномерно расположенные числа
         :return r: массив float64 - Сгенерированные случайные числа с использованием выбранного распределения.
@@ -134,7 +135,7 @@ def p_explore():
 
         return x, r, rv
 
-    x1, r1, rv1 = get_multi_parameters(*sliders_params)
+    x1, r1, rv1 = get_multi_parameters(select_distribution, *sliders_params)
 
     # Получение уравнений для отображения. Из-за нескольких различных форматов
     # уравнений, чтобы они правильно отображались в латексном режиме, используем уценку:
