@@ -1,5 +1,5 @@
-import requests
 from bs4 import BeautifulSoup
+import requests
 from scipy import stats
 import pandas as pd
 
