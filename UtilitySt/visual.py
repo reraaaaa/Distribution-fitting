@@ -1,20 +1,12 @@
-import streamlit as st
-from scipy import stats
 from scipy.stats.mstats import mquantiles
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import time
-import base64
-import ParsDistributions.parser as dps
 
 
 class Figure(object):
-    """
-    Класс фигуры: используется для отображения реквизитов фигуры и управления ими.
-    """
-    x_label = 'X значение'
-    y_label = 'Плотность'
+    """ Figure class: used to display and manipulate Figure props. """
+
+    xlabel = 'X значение'
+    ylabel = 'Плотность'
 
     global_rc_params = {
         'legend.fontsize': 12,
@@ -72,19 +64,10 @@ class Figure(object):
     def __init__(self, select_hist, select_pdf_shine,
                  select_cdf_shine, select_sf_shine, select_mark_p, x_cdf, select_boxplot,
                  q1, q2, q3, s1, s2, s3,
-                 x, r, rv, x_label, y_label,
-                 plot_mode, global_rc_params, lines):
-        """
-        Установка Cвойств
-        :param x:
-        :param r:
-        :param rv:
-        :param x_label:
-        :param y_label:
-        :param plot_mode:
-        :param global_rc_params:
-        :param lines:
-        """
+                 x, r, rv,
+                 plot_mode, select_pdf, select_cdf, select_sf):
+        """ Set properties """
+
         self.select_hist = select_hist
         self.select_pdf_shine = select_pdf_shine
         self.select_cdf_shine = select_cdf_shine
@@ -101,21 +84,14 @@ class Figure(object):
         self.x = x
         self.r = r
         self.rv = rv
-        self.x_label = x_label
-        self.y_label = y_label
         self.plot_mode = plot_mode
-        self.global_rc_params = global_rc_params
-        self.lines = lines
-        self.colors = self.get_color_scheme(plot_mode)
         self.select_pdf = select_pdf
         self.select_cdf = select_cdf
         self.select_sf = select_sf
+        self.colors = self.get_color_scheme(plot_mode)
 
     def display_mode(self):
-        """
-        rc Параметры для светлого и темного режима
-        :return:
-        """
+        """ rcParameters for light and dark mode """
 
         plot_mode = self.plot_mode
 
@@ -127,82 +103,68 @@ class Figure(object):
             plt.style.use('classic')
             plt.rcParams['figure.facecolor'] = 'white'
 
-    def draw_line(self, ax, line_func, color_key, label, select_shine):
-        """
-        Рисуем линию с дополнительным эффектом блеска
-        :param ax: Оси, на которых рис
-        :param line_func: Функция для генерации значений y
-        :param color_key: Ключ для получения цвета линии из self.colors
-        :param label: Метка для линии
-        :param select_shine: Добавляем эффект блеска
-        """
+    def pdf_cdf_lines(self, ax):
+        """ How to plot the PDF/CDF lines and setup of the "Shine" """
+
+        # Make the line shine
         n_lines = 5
-        diff_line_width = 3
+        diff_linewidth = 3
         alpha_value = 0.1
 
-        ax.plot(self.x, line_func(self.x),
-                linestyle='-',
-                color=self.colors[color_key],
-                lw=1,
-                label=label)
+        # Plot the frozen PDF if checkbox is active
+        if self.select_pdf:
+            ax.plot(self.x, self.rv.pdf(self.x), linestyle='-',
+                    color=self.colors['pdf_line_color'],
+                    lw=1, label='PDF')
+            # Set the shine-on if the checkbox is active
+            if self.select_pdf_shine:
+                for n in range(1, n_lines):
+                    ax.plot(self.x, self.rv.pdf(self.x), '-',
+                            color=self.colors['pdf_line_color'],
+                            alpha=alpha_value,
+                            linewidth=(diff_linewidth * n)
+                            )
 
-        if select_shine:
-            for n in range(1, n_lines):
-                ax.plot(self.x, line_func(self.x), '-',
-                        color=self.colors[color_key],
-                        alpha=alpha_value,
-                        linewidth=(diff_line_width * n))
+        # Same as above, only for the CDF properties
+        if self.select_cdf:
+            ax.plot(self.x, self.rv.cdf(self.x), linestyle='-',
+                    color=self.colors['cdf_line_color'],
+                    lw=1, label='CDF')
 
-    def mark_point_on_cdf(self, ax, x_cdf):
-        """
-        Отметить точку на CDF
-        :param ax: Оси, на которые можно опираться
-        :param x_cdf: Значение x точки на CDF
-        """
-        xmin, xmax = ax.get_xlim()
-        ax.vlines(x_cdf,
-                  ymin=0,
-                  ymax=self.rv.cdf(x_cdf),
-                  color=self.colors['cdf_line_color'],
-                  linestyle=':',
-                  linewidth=1)
-        ax.hlines(self.rv.cdf(x_cdf),
-                  xmin=xmin,
-                  xmax=x_cdf,
-                  color=self.colors['cdf_line_color'],
-                  linestyle=':',
-                  linewidth=1)
-        ax.annotate(f'({x_cdf:.2f},'f'{self.rv.cdf(x_cdf):.2f})',
-                    xy=(x_cdf, self.rv.cdf(x_cdf)),
-                    color=self.colors['cdf_line_color'])
+            if self.select_cdf_shine:
+                for n in range(1, n_lines):
+                    ax.plot(self.x, self.rv.cdf(self.x), '-',
+                            color=self.colors['cdf_line_color'],
+                            alpha=alpha_value,
+                            linewidth=(diff_linewidth * n))
+                    # Mark a point on the CDF
+            if self.select_mark_p:
+                xmin, xmax = ax.get_xlim()
+                ax.vlines(self.x_cdf, ymin=0, ymax=self.rv.cdf(self.x_cdf),
+                          color=self.colors['cdf_line_color'],
+                          linestyle=':', linewidth=1)
+                ax.hlines(self.rv.cdf(self.x_cdf), xmin=xmin,
+                          xmax=self.x_cdf, color=self.colors['cdf_line_color'],
+                          linestyle=':', linewidth=1)
+                ax.annotate(f'({self.x_cdf:.2f}, {self.rv.cdf(self.x_cdf):.2f})',
+                            xy=(self.x_cdf, self.rv.cdf(self.x_cdf)),
+                            color=self.colors['cdf_line_color'])
+        if self.select_sf:
+            ax.plot(self.x, self.rv.sf(self.x), linestyle='-',
+                    color='plum',
+                    lw=1, label='SF')
 
-    def pdf_cdf_lines(self, ax):
-        """
-        Как построить линии PDF/CDF и настроить «Сияние»
-        :param ax:
-        """
-        options = {
-            'pdf': {'select': self.select_pdf, 'func': self.rv.pdf, 'color_key': 'pdf_line_color', 'label': 'PDF',
-                    'shine': self.select_pdf_shine},
-            'cdf': {'select': self.select_cdf, 'func': self.rv.cdf, 'color_key': 'cdf_line_color', 'label': 'CDF',
-                    'shine': self.select_cdf_shine},
-            'sf': {'select': self.select_sf, 'func': self.rv.sf, 'color_key': 'plum', 'label': 'SF',
-                   'shine': self.select_sf_shine}
-        }
-
-        for option in options.values():
-            if option['select']:
-                self.draw_line(ax, option['func'], option['color_key'], option['label'], option['shine'])
-
-                if option['label'] == 'CDF' and self.select_mark_p:
-                    self.mark_point_on_cdf(ax, self.x_cdf)
+            if self.select_sf_shine:
+                for n in range(1, n_lines):
+                    ax.plot(self.x, self.rv.sf(self.x), '-',
+                            color='plum',
+                            alpha=alpha_value,
+                            linewidth=(diff_linewidth * n))
 
     def boxplot(self, ax):
-        """
-        Определите свойства коробчатой boxplot диаграммы.
-        """
-        bp = ax.boxplot(self.r,
-                        patch_artist=True,
+        """ Define the boxplot properties. """
+
+        bp = ax.boxplot(self.r, patch_artist=True,
                         vert=False,
                         notch=False,
                         showfliers=False
@@ -212,72 +174,73 @@ class Figure(object):
             plt.setp(bp[element], color=self.colors['boxplot_lines_color'])
         for patch in bp['boxes']:
             patch.set(facecolor=self.colors['boxplot_face_color'])
-        # Переместить метку x ниже — она будет активна, если отображается boxplot диаграмма.
-        ax.set_xlabel(self.x_label)
-        # В дополнение к глобальным rcParams установим параметры графика:
+
+            # Move x label below - this will be active if boxplot is shown
+        ax.set_xlabel(self.xlabel)
+
+        # In addition to the global rcParams, set plot options:
         ax.spines['left'].set_visible(False)
         ax.set_yticklabels([])
         ax.set_yticks([])
         ax.set_ylim(0.9, 1.1)
 
-    def quantiles(self, ax, q_values):
-        """
-        Квантили и их свойства.
-        :param ax:
-        :param q_values: List of booleans indicating which quantiles to plot.
-        """
-        def get_line(q):
-            """
-            Вычисление квантилей и расположение их в виде вертикальных линий.
-            :param q:
-            :return:
-            """
-            # Вычислить
+    def quantiles(self, ax):
+        """ Quantiles and their plot properties. """
+
+        def get_line(self, q):
+            """ Compute the quantiles and set them as vertical lines. """
+
+            # Compute
             quant = mquantiles(self.r)
+
             # Plot
-            ax.vlines(quant[q - 1],
-                      ymin=0,
-                      ymax=self.rv.pdf(quant[q - 1]),
+            ax.vlines(quant[q - 1], ymin=0, ymax=self.rv.pdf(quant[q - 1]),
                       color=self.colors[f'quant{q}_color'],
                       dashes=self.lines['dashes_r'],
-                      linewidth=2,
-                      label=f'Q{q} = {quant[q - 1]:.2f}',
-                      zorder=0,
-                      clip_on=False)
-            # Ярлык посередине
+                      linewidth=2, label=f'Q{q} = {quant[q - 1]:.2f}',
+                      zorder=0, clip_on=False)
+
+            # Label midway
             ax.text(quant[q - 1], self.rv.pdf(quant[q - 1]) * 0.5, f'Q{q}',
-                    ha='center',
-                    fontsize=10,
+                    ha='center', fontsize=10,
                     color=self.colors[f'quant{q}_color'])
 
-        for q, plot_q in enumerate(q_values, start=1):
-            if plot_q:
-                get_line(q)
+        # Streamlit control - checkboxes for Q1/2/3: on/off
+        if self.q1:
+            q = 1
+            get_line(self, q)
+
+        if self.q2:
+            q = 2
+            get_line(self, q)
+        if self.q3:
+            q = 3
+            get_line(self, q)
 
     def sigmas(self, ax):
-        """
-        Сигмы и их свойства.
-        :param ax:
-        """
-        # Нужно посчитать дополнительно с помощью функции!
+        """ Sigmas and their plot properties. """
+
+        # Need to calculate above with the function!
         def which_s(self, s):
             """
-            Вычислите стандартное отклонение и среднее значение.
-            Раст между: среднее-стандартное и среднее + стандартное, что показывает сигму.
+            Compute standard deviation and the mean.
+            Shade between: mean-std and mean+std which shows sigma.
             """
-            x01 = s*self.r.std( )
-            # Выберите только значения x в диапазоне сигм.
-            x1 = self.x[(self.x > (self.r.mean()-x01)) & (self.x < (x01+self.r.mean()))]
-            # Это затенит 1/2/3 сигмы, ограничивая y на границе PDF.
-            ax.fill_between(x1,
-                            self.rv.pdf(x1),
-                            0,
+
+            x01 = s * self.r.std()
+            # Select only x values in between sigma range
+            x1 = self.x[(self.x > (self.r.mean() - x01)) & \
+                        (self.x < (x01 + self.r.mean()))]
+            # This will shade 1/2/3 sigma, limiting y on the PDF border
+            ax.fill_between(x1, self.rv.pdf(x1), 0,
                             color=self.colors['pdf_line_color'],
                             alpha=0.2)
+
         # Streamlit control - checkboxes for sigma1/2/3: on/off
         if self.s1:
             s = 1
             which_s(self, s)
+
         if self.s2:
             s = 2
             which_s(self, s)
@@ -290,7 +253,7 @@ class Figure(object):
 
         ax.hist(self.r, density=True, bins=20,
                 edgecolor=self.colors['hist_edge_color'],
-                fill =False,  # hatch='x',
+                fill=False,  # hatch='x',
                 linewidth=1, alpha=1, label='Sample distribution')
 
     def get_figure(self, fig_type):
@@ -307,7 +270,7 @@ class Figure(object):
             return fig, ax
 
         else:
-            fig, ax = plt.subplots(1,1 )
+            fig, ax = plt.subplots(1, 1)
             return fig, ax
 
     def figure_display_control(self):
@@ -358,7 +321,7 @@ class Figure(object):
                 ax[1].set_xlim(ax[0].get_xlim())
 
                 # Move y label to apropriate ax.
-                ax[0].set_ylabel(self.y_label)
+                ax[0].set_ylabel(self.ylabel)
 
 
         else:
@@ -376,8 +339,8 @@ class Figure(object):
             if self.s1 or self.s2 or self.s3:
                 Figure.sigmas(self, ax=ax)
 
-            ax.set_xlabel(self.x_label)
-            ax.set_ylabel(self.y_label)
+            ax.set_xlabel(self.xlabel)
+            ax.set_ylabel(self.ylabel)
 
             legend = ax.legend(bbox_to_anchor=(0, 1.02, 1, 0.2),
                                loc="lower left", mode="expand",
@@ -386,8 +349,7 @@ class Figure(object):
 
         # If nothing is selected from the 'What to show on the Figure'
         if (self.select_cdf == False and self.select_pdf == False
-                and self.select_hist == False
-                and self.select_boxplot == False
+                and self.select_hist == False and self.select_boxplot == False
                 and self.select_sf == False):
             fig, ax = Figure.get_figure(self, 'single')
 

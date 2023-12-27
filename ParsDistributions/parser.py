@@ -202,7 +202,3 @@ class DistributionParser(object):
 
     def get_dictionaries(self):
         return self.dictionaries
-
-ss = DistributionParser(type_rv='continuous').get_distribution_parameters()
-all_params_names, all_params = ss
-print(all_params_names)

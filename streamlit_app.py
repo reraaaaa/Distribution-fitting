@@ -6,7 +6,7 @@ Aauthor: D-one
 # Streamlit
 
 import streamlit as st
-from DoneStorage.p_explore import p_explore
+from DoneStorage.p_explore_2 import p_explore
 from DoneStorage.p_fitting import p_fitting
 from DoneStorage.p_introduction import p_introduction
 
