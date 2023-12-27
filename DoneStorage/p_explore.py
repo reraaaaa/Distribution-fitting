@@ -81,6 +81,7 @@ def p_explore():
                 sliders_params = []
                 for i, param in enumerate(parameters_dic[f'{select_distribution}']):
                     parameter_value = float(parameters_dic.get(f'{select_distribution}').get(param))
+
                     try:
                         if vary_parameters_mode == 'Интервал шага ползунка: 0.10':
                             slider_i = create_slider(param, parameter_value, 0.10)
@@ -335,75 +336,63 @@ def p_explore():
                 plt.style.use('classic')
                 plt.rcParams['figure.facecolor'] = 'white'
 
-        def draw_line(self, ax, line_func, color_key, label, select_shine):
-            """
-            Рисуем линию с дополнительным эффектом блеска
-            :param ax: Оси, на которых рис
-            :param line_func: Функция для генерации значений y
-            :param color_key: Ключ для получения цвета линии из self.colors
-            :param label: Метка для линии
-            :param select_shine: Добавляем эффект блеска
-            """
+        def pdf_cdf_lines(self, ax):
+            """ How to plot the PDF/CDF lines and setup of the "Shine" """
+
+            # Make the line shine
             n_lines = 5
-            diff_line_width = 3
+            diff_linewidth = 3
             alpha_value = 0.1
 
-            ax.plot(self.x, line_func(self.x),
-                    linestyle='-',
-                    color=self.colors[color_key],
-                    lw=1,
-                    label=label)
+            # Plot the frozen PDF if checkbox is active
+            if select_pdf:
+                ax.plot(self.x, self.rv.pdf(self.x), linestyle='-',
+                        color=self.colors['pdf_line_color'],
+                        lw=1, label='PDF')
+                # Set the shine-on if the checkbox is active
+                if select_pdf_shine:
+                    for n in range(1, n_lines):
+                        ax.plot(self.x, self.rv.pdf(self.x), '-',
+                                color=self.colors['pdf_line_color'],
+                                alpha=alpha_value,
+                                linewidth=(diff_linewidth * n)
+                                )
 
-            if select_shine:
-                for n in range(1, n_lines):
-                    ax.plot(self.x, line_func(self.x), '-',
-                            color=self.colors[color_key],
-                            alpha=alpha_value,
-                            linewidth=(diff_line_width * n))
+            # Same as above, only for the CDF properties
+            if select_cdf:
+                ax.plot(self.x, self.rv.cdf(self.x), linestyle='-',
+                        color=self.colors['cdf_line_color'],
+                        lw=1, label='CDF')
 
-        def mark_point_on_cdf(self, ax, x_cdf):
-            """
-            Отметить точку на CDF
-            :param ax: Оси, на которые можно опираться
-            :param x_cdf: Значение x точки на CDF
-            """
-            xmin, xmax = ax.get_xlim()
-            ax.vlines(x_cdf,
-                      ymin=0,
-                      ymax=self.rv.cdf(x_cdf),
-                      color=self.colors['cdf_line_color'],
-                      linestyle=':',
-                      linewidth=1)
-            ax.hlines(self.rv.cdf(x_cdf),
-                      xmin=xmin,
-                      xmax=x_cdf,
-                      color=self.colors['cdf_line_color'],
-                      linestyle=':',
-                      linewidth=1)
-            ax.annotate(f'({x_cdf:.2f},'f'{self.rv.cdf(x_cdf):.2f})',
-                        xy=(x_cdf, self.rv.cdf(x_cdf)),
-                        color=self.colors['cdf_line_color'])
+                if select_cdf_shine:
+                    for n in range(1, n_lines):
+                        ax.plot(self.x, self.rv.cdf(self.x), '-',
+                                color=self.colors['cdf_line_color'],
+                                alpha=alpha_value,
+                                linewidth=(diff_linewidth * n))
+                        # Mark a point on the CDF
+                if select_mark_P:
+                    xmin, xmax = ax.get_xlim()
+                    ax.vlines(x_cdf, ymin=0, ymax=self.rv.cdf(x_cdf),
+                              color=self.colors['cdf_line_color'],
+                              linestyle=':', linewidth=1)
+                    ax.hlines(self.rv.cdf(x_cdf), xmin=xmin,
+                              xmax=x_cdf, color=self.colors['cdf_line_color'],
+                              linestyle=':', linewidth=1)
+                    ax.annotate(f'({x_cdf:.2f}, {self.rv.cdf(x_cdf):.2f})',
+                                xy=(x_cdf, self.rv.cdf(x_cdf)),
+                                color=self.colors['cdf_line_color'])
+            if select_sf:
+                ax.plot(self.x, self.rv.sf(self.x), linestyle='-',
+                        color='plum',
+                        lw=1, label='SF')
 
-        def pdf_cdf_lines(self, ax):
-            """
-            Как построить линии PDF/CDF и настроить «Сияние»
-            :param ax:
-            """
-            options = {
-                'pdf': {'select': select_pdf, 'func': self.rv.pdf, 'color_key': 'pdf_line_color', 'label': 'PDF',
-                        'shine': select_pdf_shine},
-                'cdf': {'select': select_cdf, 'func': self.rv.cdf, 'color_key': 'cdf_line_color', 'label': 'CDF',
-                        'shine': select_cdf_shine},
-                'sf': {'select': select_sf, 'func': self.rv.sf, 'color_key': 'plum', 'label': 'SF',
-                       'shine': select_sf_shine}
-            }
-
-            for option in options.values():
-                if option['select']:
-                    self.draw_line(ax, option['func'], option['color_key'], option['label'], option['shine'])
-
-                    if option['label'] == 'CDF' and select_mark_P:
-                        self.mark_point_on_cdf(ax, x_cdf)
+                if select_sf_shine:
+                    for n in range(1, n_lines):
+                        ax.plot(self.x, self.rv.sf(self.x), '-',
+                                color='plum',
+                                alpha=alpha_value,
+                                linewidth=(diff_linewidth * n))
 
         def boxplot(self, ax):
             """ Define the boxplot properties. """
