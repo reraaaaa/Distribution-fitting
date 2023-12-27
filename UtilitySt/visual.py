@@ -63,7 +63,7 @@ class Figure(object):
         :return: A dictionary with color scheme
         """
         if plot_mode == 'Dark Mode':
-            return {
+            colors = {
                 'pdf_line_color': '#fec44f',
                 'hist_color': '#bdbdbd',
                 'hist_edge_color': 'grey',
@@ -76,7 +76,7 @@ class Figure(object):
                 'quant3_color': '#41b6c4',
             }
         else:  # 'Light Mode'
-            return {
+            colors = {
                 'pdf_line_color': '#08519c',
                 'hist_color': '#525252',
                 'hist_edge_color': 'grey',
@@ -88,6 +88,7 @@ class Figure(object):
                 'quant2_color': '#35978f',
                 'quant3_color': '#b35806',
             }
+        return colors
 
     def display_mode(self):
         """ rcParameters for light and dark mode """
