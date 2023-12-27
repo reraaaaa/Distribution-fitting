@@ -28,6 +28,39 @@ class Figure(object):
              'dashes_r': (0, (5, 10))
              }
 
+    def get_color_scheme(self, mode):
+        """
+        Get color scheme based on mode
+        :param mode: The mode ('Dark Mode' or 'Light Mode')
+        :return: A dictionary with color scheme
+        """
+        if mode == 'Dark Mode':
+            return {
+                'pdf_line_color': '#fec44f',
+                'hist_color': '#bdbdbd',
+                'hist_edge_color': 'grey',
+                'cdf_line_color': 'white',
+                'frame_edge_color': '#525252',
+                'boxplot_lines_color': 'white',
+                'boxplot_face_color': 'black',
+                'quant1_color': '#c7e9b4',
+                'quant2_color': '#7fcdbb',
+                'quant3_color': '#41b6c4',
+            }
+        else:  # 'Light Mode'
+            return {
+                'pdf_line_color': '#08519c',
+                'hist_color': '#525252',
+                'hist_edge_color': 'grey',
+                'cdf_line_color': 'black',
+                'frame_edge_color': '#525252',
+                'boxplot_lines_color': 'black',
+                'boxplot_face_color': 'white',
+                'quant1_color': '#b2182b',
+                'quant2_color': '#35978f',
+                'quant3_color': '#b35806',
+            }
+
     def __init__(self, select_hist, select_pdf_shine,
                  select_cdf_shine, select_sf_shine, select_mark_p, x_cdf, select_boxplot,
                  q1, q2, q3, s1, s2, s3,
@@ -55,40 +88,7 @@ class Figure(object):
         self.select_pdf = select_pdf
         self.select_cdf = select_cdf
         self.select_sf = select_sf
-
-    def get_color_scheme(self, plot_mode):
-        """
-        Get color scheme based on mode
-        :param mode: The mode ('Dark Mode' or 'Light Mode')
-        :return: A dictionary with color scheme
-        """
-        if plot_mode == 'Dark Mode':
-            colors = {
-                'pdf_line_color': '#fec44f',
-                'hist_color': '#bdbdbd',
-                'hist_edge_color': 'grey',
-                'cdf_line_color': 'white',
-                'frame_edge_color': '#525252',
-                'boxplot_lines_color': 'white',
-                'boxplot_face_color': 'black',
-                'quant1_color': '#c7e9b4',
-                'quant2_color': '#7fcdbb',
-                'quant3_color': '#41b6c4',
-            }
-        else:  # 'Light Mode'
-            colors = {
-                'pdf_line_color': '#08519c',
-                'hist_color': '#525252',
-                'hist_edge_color': 'grey',
-                'cdf_line_color': 'black',
-                'frame_edge_color': '#525252',
-                'boxplot_lines_color': 'black',
-                'boxplot_face_color': 'white',
-                'quant1_color': '#b2182b',
-                'quant2_color': '#35978f',
-                'quant3_color': '#b35806',
-            }
-        return colors
+        self.colors = self.get_color_scheme(plot_mode)
 
     def display_mode(self):
         """ rcParameters for light and dark mode """
@@ -99,7 +99,7 @@ class Figure(object):
             plt.style.use('dark_background')
             plt.rcParams['figure.facecolor'] = 'black'
 
-        if plot_mode == 'Light Mode':
+        elif plot_mode == 'Light Mode':
             plt.style.use('classic')
             plt.rcParams['figure.facecolor'] = 'white'
 
