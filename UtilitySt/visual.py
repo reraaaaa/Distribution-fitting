@@ -30,6 +30,32 @@ class Figure(object):
              'dashes_r': (0, (5, 10))
              }
 
+    DARK_MODE_COLORS = {
+        'pdf_line_color': '#fec44f',
+        'hist_color': '#bdbdbd',
+        'hist_edge_color': 'grey',
+        'cdf_line_color': 'white',
+        'frame_edge_color': '#525252',
+        'boxplot_lines_color': 'white',
+        'boxplot_face_color': 'black',
+        'quant1_color': '#c7e9b4',
+        'quant2_color': '#7fcdbb',
+        'quant3_color': '#41b6c4'
+    }
+
+    LIGHT_MODE_COLORS = {
+        'pdf_line_color': '#08519c',
+        'hist_color': '#525252',
+        'hist_edge_color': 'grey',
+        'cdf_line_color': 'black',
+        'frame_edge_color': '#525252',
+        'boxplot_lines_color': 'black',
+        'boxplot_face_color': 'white',
+        'quant1_color': '#b2182b',
+        'quant2_color': '#35978f',
+        'quant3_color': '#b35806'
+    }
+
     def __init__(self, select_hist, select_pdf_shine,
                  select_cdf_shine, select_sf_shine, select_mark_p, x_cdf, select_boxplot,
                  q1, q2, q3, s1, s2, s3,
@@ -63,37 +89,14 @@ class Figure(object):
         """
         Получить цветовую схему в зависимости от режима
         :param plot_mode:
-        :param mode: The mode ('Dark Mode' or 'Light Mode')
         :return: Словарь с цветовой схемой
         """
         if plot_mode == 'Dark Mode':
-            colors = {
-                 'pdf_line_color': '#fec44f',
-                 'hist_color': '#bdbdbd',
-                 'hist_edge_color': 'grey',
-                 'cdf_line_color': 'white',
-                 'frame_edge_color': '#525252',
-                 'boxplot_lines_color': 'white',
-                 'boxplot_face_color': 'black',
-                 'quant1_color': '#c7e9b4',
-                 'quant2_color': '#7fcdbb',
-                 'quant3_color': '#41b6c4'
-             }
+            return self.DARK_MODE_COLORS
         elif plot_mode == 'Light Mode':
-            colors = {
-                'pdf_line_color': '#08519c',
-                'hist_color': '#525252',
-                'hist_edge_color': 'grey',
-                'cdf_line_color': 'black',
-                'frame_edge_color': '#525252',
-                'boxplot_lines_color': 'black',
-                'boxplot_face_color': 'white',
-                'quant1_color': '#b2182b',
-                'quant2_color': '#35978f',
-                'quant3_color': '#b35806'}
+            return self.LIGHT_MODE_COLORS
         else:
             raise ValueError("Invalid mode. Expected 'Dark Mode' or 'Light Mode'")
-        return colors
 
     def display_mode(self):
         """ rcParameters for light and dark mode """
