@@ -9,7 +9,7 @@ import base64
 import ParsDistributions.parser as dps
 
 
-class Figure:
+class Figure(object):
     """
     Класс фигуры: используется для отображения реквизитов фигуры и управления ими.
     """
@@ -110,7 +110,6 @@ class Figure:
         self.select_pdf = select_pdf
         self.select_cdf = select_cdf
         self.select_sf = select_sf
-
 
     def display_mode(self):
         """
