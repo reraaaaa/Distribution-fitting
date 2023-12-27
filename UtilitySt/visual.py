@@ -59,8 +59,7 @@ class Figure(object):
         self.select_sf = select_sf
         self.colors = self.get_color_scheme(plot_mode)
 
-    @staticmethod
-    def get_color_scheme(plot_mode):
+    def get_color_scheme(self, plot_mode):
         """
         Получить цветовую схему в зависимости от режима
         :param plot_mode:
@@ -68,20 +67,20 @@ class Figure(object):
         :return: Словарь с цветовой схемой
         """
         if plot_mode == 'Dark Mode':
-            return {
-                'pdf_line_color': '#fec44f',
-                'hist_color': '#bdbdbd',
-                'hist_edge_color': 'grey',
-                'cdf_line_color': 'white',
-                'frame_edge_color': '#525252',
-                'boxplot_lines_color': 'white',
-                'boxplot_face_color': 'black',
-                'quant1_color': '#c7e9b4',
-                'quant2_color': '#7fcdbb',
-                'quant3_color': '#41b6c4',
-            }
+            colors = {
+                 'pdf_line_color': '#fec44f',
+                 'hist_color': '#bdbdbd',
+                 'hist_edge_color': 'grey',
+                 'cdf_line_color': 'white',
+                 'frame_edge_color': '#525252',
+                 'boxplot_lines_color': 'white',
+                 'boxplot_face_color': 'black',
+                 'quant1_color': '#c7e9b4',
+                 'quant2_color': '#7fcdbb',
+                 'quant3_color': '#41b6c4'
+             }
         elif plot_mode == 'Light Mode':
-            return {
+            colors = {
                 'pdf_line_color': '#08519c',
                 'hist_color': '#525252',
                 'hist_edge_color': 'grey',
@@ -91,10 +90,10 @@ class Figure(object):
                 'boxplot_face_color': 'white',
                 'quant1_color': '#b2182b',
                 'quant2_color': '#35978f',
-                'quant3_color': '#b35806',
-            }
+                'quant3_color': '#b35806'}
         else:
             raise ValueError("Invalid mode. Expected 'Dark Mode' or 'Light Mode'")
+        return colors
 
     def display_mode(self):
         """ rcParameters for light and dark mode """
