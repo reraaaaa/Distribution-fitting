@@ -99,7 +99,7 @@ class Figure(object):
             plt.style.use('dark_background')
             plt.rcParams['figure.facecolor'] = 'black'
 
-        elif plot_mode == 'Light Mode':
+        if plot_mode == 'Light Mode':
             plt.style.use('classic')
             plt.rcParams['figure.facecolor'] = 'white'
 
