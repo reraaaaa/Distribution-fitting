@@ -92,11 +92,12 @@ class Figure(object):
         :return: Словарь с цветовой схемой
         """
         if plot_mode == 'Dark Mode':
-            return self.DARK_MODE_COLORS
+            colors = self.DARK_MODE_COLORS
         elif plot_mode == 'Light Mode':
-            return self.LIGHT_MODE_COLORS
+            colors = self.LIGHT_MODE_COLORS
         else:
             raise ValueError("Invalid mode. Expected 'Dark Mode' or 'Light Mode'")
+        return colors
 
     def display_mode(self):
         """ rcParameters for light and dark mode """
