@@ -150,7 +150,7 @@ class DistributionParser(object):
                 p_names = [sh.strip() for sh in dist.shapes.split(',')] + ['loc', 'scale']
             all_params_names.append(p_names)
             loc, scale = 0.00, 1.00
-            params = [params, loc, scale]
+            params = params + [loc, scale]
             all_params.append(params)
         return all_params_names, all_params
 
