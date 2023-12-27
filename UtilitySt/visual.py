@@ -99,10 +99,8 @@ class Figure(object):
             raise ValueError("Invalid mode. Expected 'Dark Mode' or 'Light Mode'")
         return colors
 
-    def display_mode(self):
+    def display_mode(self, plot_mode):
         """ rcParameters for light and dark mode """
-
-        plot_mode = self.plot_mode
 
         if plot_mode == 'Dark Mode':
             plt.style.use('dark_background')
