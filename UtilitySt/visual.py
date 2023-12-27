@@ -59,7 +59,8 @@ class Figure(object):
         self.select_sf = select_sf
         self.colors = self.get_color_scheme(plot_mode)
 
-    def get_color_scheme(self, plot_mode):
+    @staticmethod
+    def get_color_scheme(plot_mode):
         """
         Получить цветовую схему в зависимости от режима
         :param plot_mode:
@@ -104,7 +105,7 @@ class Figure(object):
             plt.style.use('dark_background')
             plt.rcParams['figure.facecolor'] = 'black'
 
-        if plot_mode == 'Light Mode':
+        elif plot_mode == 'Light Mode':
             plt.style.use('classic')
             plt.rcParams['figure.facecolor'] = 'white'
 
