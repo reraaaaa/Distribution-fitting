@@ -16,7 +16,7 @@ import ParsDistributions.parser as dps
 
 
 def p_explore():
-    s = dps.DistributionParser(type_rv='discrete')
+    s = dps.DistributionParser(type_rv='continuous')
     dictionaries = s.get_dictionaries()
 
     doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = dictionaries.values()
