@@ -2,8 +2,46 @@ from scipy.stats.mstats import mquantiles
 import matplotlib.pyplot as plt
 
 
+def get_color_scheme(mode):
+    """
+    Получить цветовую схему в зависимости от режима
+    :param mode: The mode ('Dark Mode' or 'Light Mode')
+    :return: Словарь с цветовой схемой
+    """
+    if mode == 'Dark Mode':
+        return {
+            'pdf_line_color': '#fec44f',
+            'hist_color': '#bdbdbd',
+            'hist_edge_color': 'grey',
+            'cdf_line_color': 'white',
+            'frame_edge_color': '#525252',
+            'boxplot_lines_color': 'white',
+            'boxplot_face_color': 'black',
+            'quant1_color': '#c7e9b4',
+            'quant2_color': '#7fcdbb',
+            'quant3_color': '#41b6c4',
+        }
+    elif mode == 'Light Mode':
+        return {
+            'pdf_line_color': '#08519c',
+            'hist_color': '#525252',
+            'hist_edge_color': 'grey',
+            'cdf_line_color': 'black',
+            'frame_edge_color': '#525252',
+            'boxplot_lines_color': 'black',
+            'boxplot_face_color': 'white',
+            'quant1_color': '#b2182b',
+            'quant2_color': '#35978f',
+            'quant3_color': '#b35806',
+        }
+    else:
+        raise ValueError("Invalid mode. Expected 'Dark Mode' or 'Light Mode'")
+
+
 class Figure(object):
-    """ Figure class: used to display and manipulate Figure props. """
+    """
+    Класс фигуры: используется для отображения реквизитов фигуры и управления ими.
+    """
 
     xlabel = 'X значение'
     ylabel = 'Плотность'
@@ -27,39 +65,6 @@ class Figure(object):
              'dashes': [5, 10, 5, 10],
              'dashes_r': (0, (5, 10))
              }
-
-    def get_color_scheme(self, mode):
-        """
-        Get color scheme based on mode
-        :param mode: The mode ('Dark Mode' or 'Light Mode')
-        :return: A dictionary with color scheme
-        """
-        if mode == 'Dark Mode':
-            return {
-                'pdf_line_color': '#fec44f',
-                'hist_color': '#bdbdbd',
-                'hist_edge_color': 'grey',
-                'cdf_line_color': 'white',
-                'frame_edge_color': '#525252',
-                'boxplot_lines_color': 'white',
-                'boxplot_face_color': 'black',
-                'quant1_color': '#c7e9b4',
-                'quant2_color': '#7fcdbb',
-                'quant3_color': '#41b6c4',
-            }
-        else:  # 'Light Mode'
-            return {
-                'pdf_line_color': '#08519c',
-                'hist_color': '#525252',
-                'hist_edge_color': 'grey',
-                'cdf_line_color': 'black',
-                'frame_edge_color': '#525252',
-                'boxplot_lines_color': 'black',
-                'boxplot_face_color': 'white',
-                'quant1_color': '#b2182b',
-                'quant2_color': '#35978f',
-                'quant3_color': '#b35806',
-            }
 
     def __init__(self, select_hist, select_pdf_shine,
                  select_cdf_shine, select_sf_shine, select_mark_p, x_cdf, select_boxplot,
@@ -88,7 +93,7 @@ class Figure(object):
         self.select_pdf = select_pdf
         self.select_cdf = select_cdf
         self.select_sf = select_sf
-        self.colors = self.get_color_scheme(plot_mode)
+        self.colors = get_color_scheme(plot_mode)
 
     def display_mode(self):
         """ rcParameters for light and dark mode """
@@ -104,48 +109,64 @@ class Figure(object):
             plt.rcParams['figure.facecolor'] = 'white'
 
     def pdf_cdf_lines(self, ax):
-        """ How to plot the PDF/CDF lines and setup of the "Shine" """
-
-        # Make the line shine
+        """
+        Как построить линии PDF/CDF и настроить «Shine»
+        :param ax:
+        :return:
+        """
+        # Свет линий
         n_lines = 5
         diff_linewidth = 3
         alpha_value = 0.1
-
-        # Plot the frozen PDF if checkbox is active
+        # Распечатать замороженный PDF, если флажок активен.
         if self.select_pdf:
-            ax.plot(self.x, self.rv.pdf(self.x), linestyle='-',
+            ax.plot(self.x,
+                    self.rv.pdf(self.x),
+                    linestyle='-',
                     color=self.colors['pdf_line_color'],
-                    lw=1, label='PDF')
-            # Set the shine-on if the checkbox is active
+                    lw=1,
+                    label='PDF')
+            # Установите яркость PDF, если флажок активен
             if self.select_pdf_shine:
                 for n in range(1, n_lines):
-                    ax.plot(self.x, self.rv.pdf(self.x), '-',
+                    ax.plot(self.x,
+                            self.rv.pdf(self.x),
+                            linestyle='-',
                             color=self.colors['pdf_line_color'],
                             alpha=alpha_value,
-                            linewidth=(diff_linewidth * n)
-                            )
-
-        # Same as above, only for the CDF properties
+                            linewidth=(diff_linewidth * n))
+        # То же, что и выше, только для свойств CDF.
         if self.select_cdf:
-            ax.plot(self.x, self.rv.cdf(self.x), linestyle='-',
+            ax.plot(self.x,
+                    self.rv.cdf(self.x),
+                    linestyle='-',
                     color=self.colors['cdf_line_color'],
-                    lw=1, label='CDF')
-
+                    lw=1,
+                    label='CDF')
+            # Установите яркость CDF, если флажок активен
             if self.select_cdf_shine:
                 for n in range(1, n_lines):
-                    ax.plot(self.x, self.rv.cdf(self.x), '-',
+                    ax.plot(self.x,
+                            self.rv.cdf(self.x),
+                            linestyle='-',
                             color=self.colors['cdf_line_color'],
                             alpha=alpha_value,
                             linewidth=(diff_linewidth * n))
-                    # Mark a point on the CDF
+            # Отметьте точку на CDF
             if self.select_mark_p:
-                xmin, xmax = ax.get_xlim()
-                ax.vlines(self.x_cdf, ymin=0, ymax=self.rv.cdf(self.x_cdf),
+                x_min, x_max = ax.get_xlim()
+                ax.vlines(self.x_cdf,
+                          ymin=0,
+                          ymax=self.rv.cdf(self.x_cdf),
                           color=self.colors['cdf_line_color'],
-                          linestyle=':', linewidth=1)
-                ax.hlines(self.rv.cdf(self.x_cdf), xmin=xmin,
-                          xmax=self.x_cdf, color=self.colors['cdf_line_color'],
-                          linestyle=':', linewidth=1)
+                          linestyle=':',
+                          linewidth=1)
+                ax.hlines(self.rv.cdf(self.x_cdf),
+                          xmin=x_min,
+                          xmax=self.x_cdf,
+                          color=self.colors['cdf_line_color'],
+                          linestyle=':',
+                          linewidth=1)
                 ax.annotate(f'({self.x_cdf:.2f}, {self.rv.cdf(self.x_cdf):.2f})',
                             xy=(self.x_cdf, self.rv.cdf(self.x_cdf)),
                             color=self.colors['cdf_line_color'])
@@ -162,8 +183,11 @@ class Figure(object):
                             linewidth=(diff_linewidth * n))
 
     def boxplot(self, ax):
-        """ Define the boxplot properties. """
-
+        """
+        Определите свойства коробчатой диаграммы.
+        :param ax:
+        :return:
+        """
         bp = ax.boxplot(self.r, patch_artist=True,
                         vert=False,
                         notch=False,
@@ -175,10 +199,10 @@ class Figure(object):
         for patch in bp['boxes']:
             patch.set(facecolor=self.colors['boxplot_face_color'])
 
-            # Move x label below - this will be active if boxplot is shown
+        # Переместить метку x ниже — она будет активна, если отображается коробчатая диаграмма.
         ax.set_xlabel(self.xlabel)
 
-        # In addition to the global rcParams, set plot options:
+        # В дополнение к глобальным rcParams установите параметры графика:
         ax.spines['left'].set_visible(False)
         ax.set_yticklabels([])
         ax.set_yticks([])
