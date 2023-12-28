@@ -115,7 +115,16 @@ class Figure(object):
         return plt
 
     def plot_with_shine(self, ax, select, select_shine, color, func, label):
-        """Plot a line with optional shine effect"""
+        """
+        Постройте линию с дополнительным эффектом блеска
+        :param ax:
+        :param select: тип селектора select_pdf или select_cdf или select_sf
+        :param select_shine: тип селектора select_pdf_shine или select_cdf_shine или select_sf_shine
+        :param color: цвет схема из get_color_scheme
+        :param func: rv.pdf или rv.cdf или rv.sf
+        :param label: PDF или CDF
+        :return:
+        """
         n_lines = 5
         diff_linewidth = 3
         alpha_value = 0.1
@@ -130,13 +139,21 @@ class Figure(object):
                             linewidth=(diff_linewidth * n))
 
     def pdf_cdf_lines(self, ax):
-        """ How to plot the PDF/CDF lines and setup of the "Shine" """
-        # Check if rv.pdf, rv.cdf, and rv.sf are callable
+        """
+        Процедура построения линии PDF/CDF и настройка «Shine»
+        :param ax:
+        :return:
+        """
+        # Check if self.plot_with_shine is callable
+        if not callable(self.plot_with_shine):
+            raise ValueError("self.plot_with_shine must be a function")
+
+        # Проверка, можно ли вызвать rv.pdf, rv.cdf и rv.sf.
         for func in [self.rv.pdf, self.rv.cdf, self.rv.sf]:
             if not callable(func):
                 raise ValueError(f"{func} must be a function")
 
-        # Check if rv.pdf, rv.cdf, and rv.sf work with self.x
+        # Проверка, работают ли rv.pdf, rv.cdf и rv.sf с self.x.
         try:
             for func in [self.rv.pdf, self.rv.cdf, self.rv.sf]:
                 func(self.x)
@@ -147,8 +164,7 @@ class Figure(object):
                              'PDF')
         self.plot_with_shine(ax, self.select_cdf, self.select_cdf_shine, self.colors['cdf_line_color'], self.rv.cdf,
                              'CDF')
-
-        # Mark a point on the CDF
+        # Отметить точку на CDF
         if self.select_mark_p:
             xmin, xmax = ax.get_xlim()
             ax.vlines(self.x_cdf, ymin=0, ymax=self.rv.cdf(self.x_cdf),
@@ -182,7 +198,6 @@ class Figure(object):
 
         # Переместить метку x ниже — она будет активна, если отображается коробчатая диаграмма.
         ax.set_xlabel(self.xlabel)
-
         # В дополнение к глобальным rcParams установите параметры графика:
         ax.spines['left'].set_visible(False)
         ax.set_yticklabels([])
