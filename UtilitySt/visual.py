@@ -1,3 +1,4 @@
+import numpy as np
 from scipy.stats.mstats import mquantiles
 import matplotlib.pyplot as plt
 
@@ -169,6 +170,10 @@ class Figure(object):
         :param ax:
         :return:
         """
+        # Check if self.r is defined and is an array-like object
+        if 'r' not in self.__dict__ or not isinstance(self.r, (list, tuple, np.ndarray)):
+            raise ValueError("self.r must be defined and be an array-like object")
+
         bp = ax.boxplot(self.r, patch_artist=True,
                         vert=False,
                         notch=False,
