@@ -254,11 +254,11 @@ class Figure(object):
     def plot_lines(self, ax):
         self.pdf_cdf_lines(ax=ax)
         if self.q1 or self.q2 or self.q3:
-            Figure.quantiles(self, ax=ax)
+            self.quantiles(ax=ax)
         if self.s1 or self.s2 or self.s3:
-            Figure.sigmas(self, ax=ax)
+            self.sigmas(ax=ax)
         if self.select_hist:
-            Figure.histogram(self, ax=ax)
+            self.histogram(ax=ax)
 
     def set_legend(self, ax):
         legend = ax.legend(bbox_to_anchor=(0, 1.02, 1, 0.2),
@@ -274,12 +274,14 @@ class Figure(object):
             self.plot_lines(ax[0])
             self.set_legend(ax[0])
 
-            if (self.select_cdf == False and self.select_pdf == False
-                    and self.select_hist == False and self.select_sf == False):
+            if (self.select_cdf == False
+                    and self.select_pdf == False
+                    and self.select_hist == False
+                    and self.select_sf == False):
                 fig, ax = self.setup_figure('single')
-                Figure.boxplot(self, ax=ax)
+                self.boxplot(ax=ax)
             else:
-                Figure.boxplot(self, ax=ax[1])
+                self.boxplot(ax=ax[1])
                 ax[1].set_xlim(ax[0].get_xlim())
                 ax[0].set_ylabel(self.ylabel)
         else:
