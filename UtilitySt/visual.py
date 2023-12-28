@@ -253,9 +253,9 @@ class Figure(object):
 
     def plot_lines(self, ax):
         self.pdf_cdf_lines(ax=ax)
-        if self.q1 or self.q2 or self.q3:
+        if any([self.q1, self.q2, self.q3]):
             self.quantiles(ax=ax)
-        if self.s1 or self.s2 or self.s3:
+        if any([self.s1, self.s2, self.s3]):
             self.sigmas(ax=ax)
         if self.select_hist:
             self.histogram(ax=ax)
@@ -274,10 +274,7 @@ class Figure(object):
             self.plot_lines(ax[0])
             self.set_legend(ax[0])
 
-            if (self.select_cdf == False
-                    and self.select_pdf == False
-                    and self.select_hist == False
-                    and self.select_sf == False):
+            if not any([self.select_cdf, self.select_pdf, self.select_hist, self.select_sf]):
                 fig, ax = self.setup_figure('single')
                 self.boxplot(ax=ax)
             else:
@@ -290,10 +287,7 @@ class Figure(object):
             ax.set_xlabel(self.xlabel)
             ax.set_ylabel(self.ylabel)
             self.set_legend(ax)
-
-        if (self.select_cdf == False and self.select_pdf == False
-                and self.select_hist == False and self.select_boxplot == False
-                and self.select_sf == False):
+        if not any([self.select_cdf, self.select_pdf, self.select_hist, self.select_boxplot, self.select_sf]):
             fig, ax = self.setup_figure('single')
             ax.text(0.1, 0.5, 'Tabula rasa',
                     va='center', fontsize=20)
