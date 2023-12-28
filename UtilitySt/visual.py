@@ -243,7 +243,6 @@ class Figure(object):
                 fill=False,  # hatch='x',
                 linewidth=1, alpha=1, label='Sample distribution')
 
-
     def setup_figure(self, fig_type):
         if fig_type == 'dual':
             fig, ax = plt.subplots(2, 1,
@@ -253,7 +252,7 @@ class Figure(object):
         return fig, ax
 
     def plot_lines(self, ax):
-        Figure.pdf_cdf_lines(self, ax=ax)
+        self.pdf_cdf_lines(ax=ax)
         if self.q1 or self.q2 or self.q3:
             Figure.quantiles(self, ax=ax)
         if self.s1 or self.s2 or self.s3:
