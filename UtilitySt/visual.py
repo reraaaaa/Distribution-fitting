@@ -112,6 +112,7 @@ class Figure(object):
             plt.rcParams['figure.facecolor'] = 'white'
         else:
             raise ValueError("Invalid mode. Expected 'Dark Mode' or 'Light Mode'")
+        return plt
 
     def pdf_cdf_lines(self, ax):
         """
@@ -249,32 +250,19 @@ class Figure(object):
     def sigmas(self, ax):
         """ Sigmas and their plot properties. """
 
-        # Need to calculate above with the function!
-        def which_s(self, s):
-            """
-            Compute standard deviation and the mean.
-            Shade between: mean-std and mean+std which shows sigma.
-            """
-
-            x01 = s * self.r.std()
-            # Select only x values in between sigma range
-            x1 = self.x[(self.x > (self.r.mean() - x01)) & (self.x < (x01 + self.r.mean()))]
-            # This will shade 1/2/3 sigma, limiting y on the PDF border
-            ax.fill_between(x1, self.rv.pdf(x1), 0,
-                            color=self.colors['pdf_line_color'],
-                            alpha=0.2)
-
-        # Streamlit control - checkboxes for sigma1/2/3: on/off
-        if self.s1:
-            s = 1
-            which_s(self, s)
-
-        if self.s2:
-            s = 2
-            which_s(self, s)
-        if self.s3:
-            s = 3
-            which_s(self, s)
+        for s in [self.s1, self.s2, self.s3]:
+            if s:
+                """
+                Compute standard deviation and the mean.
+                Shade between: mean-std and mean+std which shows sigma.
+                """
+                x01 = s * self.r.std()
+                # Select only x values in between sigma range
+                x1 = self.x[(self.x > (self.r.mean() - x01)) & (self.x < (x01 + self.r.mean()))]
+                # This will shade 1/2/3 sigma, limiting y on the PDF border
+                ax.fill_between(x1, self.rv.pdf(x1), 0,
+                                color=self.colors['pdf_line_color'],
+                                alpha=0.2)
 
     def histogram(self, ax):
         """ Histogram properties """
