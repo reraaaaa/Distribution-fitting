@@ -134,6 +134,7 @@ class Figure(object):
                     ax.plot(self.x, line_func(self.x), linestyle='-', color=line_color, alpha=alpha_value,
                             linewidth=(diff_linewidth * n))
 
+
     def pdf_cdf_lines(self, ax):
         """
         Как построить линии PDF/CDF и настроить «Shine»
