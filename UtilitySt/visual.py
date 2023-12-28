@@ -160,7 +160,7 @@ class Figure(object):
                              'PDF')
         self.plot_with_shine(ax, self.select_cdf, self.select_cdf_shine, self.colors['cdf_line_color'], self.rv.cdf,
                              'CDF')
-        # Отметить точку на CDF
+        # Отметьте точку на CDF
         if self.select_mark_p:
             xmin, xmax = ax.get_xlim()
             ax.vlines(self.x_cdf, ymin=0, ymax=self.rv.cdf(self.x_cdf),
@@ -194,6 +194,7 @@ class Figure(object):
 
         # Переместить метку x ниже — она будет активна, если отображается коробчатая диаграмма.
         ax.set_xlabel(self.xlabel)
+
         # В дополнение к глобальным rcParams установите параметры графика:
         ax.spines['left'].set_visible(False)
         ax.set_yticklabels([])
