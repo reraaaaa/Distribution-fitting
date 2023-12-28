@@ -144,10 +144,6 @@ class Figure(object):
         :param ax:
         :return:
         """
-        # Check if self.plot_with_shine is callable
-        if not callable(self.plot_with_shine):
-            raise ValueError("self.plot_with_shine must be a function")
-
         # Проверка, можно ли вызвать rv.pdf, rv.cdf и rv.sf.
         for func in [self.rv.pdf, self.rv.cdf, self.rv.sf]:
             if not callable(func):
