@@ -117,6 +117,18 @@ class Figure(object):
     def pdf_cdf_lines(self, ax):
         """ How to plot the PDF/CDF lines and setup of the "Shine" """
 
+        # Check if rv.pdf, rv.cdf, and rv.sf are callable
+        for func in [self.rv.pdf, self.rv.cdf, self.rv.sf]:
+            if not callable(func):
+                raise ValueError(f"{func} must be a function")
+
+        # Check if rv.pdf, rv.cdf, and rv.sf work with self.x
+        try:
+            for func in [self.rv.pdf, self.rv.cdf, self.rv.sf]:
+                func(self.x)
+        except Exception as e:
+            raise ValueError(f"{func} failed with error: {e}")
+
         # Make the line shine
         n_lines = 5
         diff_linewidth = 3
