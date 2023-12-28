@@ -241,13 +241,13 @@ class Figure(object):
         :param ax:
         :return:
         """
-        for s in [self.s1, self.s2, self.s3]:
+        for idx, s in enumerate([self.s1, self.s2, self.s3], start=1):
             if s:
                 """
                 Compute standard deviation and the mean.
                 Shade between: mean-std and mean+std which shows sigma.
                 """
-                x01 = s * self.r.std()
+                x01 = idx * self.r.std()
                 # Выберите только значения x в диапазоне сигм.
                 x1 = self.x[(self.x > (self.r.mean() - x01)) & (self.x < (x01 + self.r.mean()))]
                 # Это затенит 1/2/3 сигмы, ограничивая y на границе PDF.
