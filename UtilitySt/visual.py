@@ -124,6 +124,16 @@ class Figure(object):
         :param line_func: A function that takes x and returns y.
         :param line_label: The label of the line.
         """
+        # Check if line_func is callable
+        if not callable(line_func):
+            raise ValueError("line_func must be a function")
+
+        # Check if line_func works with self.x
+        try:
+            line_func(self.x)
+        except Exception as e:
+            raise ValueError(f"line_func failed with error: {e}")
+
         if select:
             ax.plot(self.x, line_func(self.x), linestyle='-', color=line_color, lw=1, label=line_label)
             if select_shine:
