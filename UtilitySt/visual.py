@@ -162,7 +162,7 @@ class Figure(object):
                         xy=(self.x_cdf, self.rv.cdf(self.x_cdf)),
                         color=self.colors['cdf_line_color'])
 
-            self.plot_line(ax, self.select_sf, self.select_sf_shine, 'plum', self.rv.sf, 'SF')
+        self.plot_line(ax, self.select_sf, self.select_sf_shine, 'plum', self.rv.sf, 'SF')
 
     def boxplot(self, ax):
         """
