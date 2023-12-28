@@ -114,13 +114,13 @@ class Figure(object):
             raise ValueError("Invalid mode. Expected 'Dark Mode' or 'Light Mode'")
         return plt
 
-    def plot_line(self, ax, select, select_shine, line_color, line_func, line_label):
+    def plot_line(self, ax, select, select_shine, color, line_func, line_label):
         """
         Plot a line on the given axes.
         :param ax: The axes on which to plot.
         :param select: Whether to plot the line.
         :param select_shine: Whether to apply shine effect.
-        :param line_color: The color of the line.
+        :param color: The color of the line.
         :param line_func: A function that takes x and returns y.
         :param line_label: The label of the line.
         """
@@ -135,13 +135,13 @@ class Figure(object):
             raise ValueError(f"line_func failed with error: {e}")
 
         if select:
-            ax.plot(self.x, line_func(self.x), linestyle='-', color=line_color, lw=1, label=line_label)
+            ax.plot(self.x, line_func(self.x), linestyle='-', color=color, lw=1, label=line_label)
             if select_shine:
                 n_lines = 5
                 diff_linewidth = 3
                 alpha_value = 0.1
                 for n in range(1, n_lines):
-                    ax.plot(self.x, line_func(self.x), linestyle='-', color=line_color, alpha=alpha_value,
+                    ax.plot(self.x, line_func(self.x), linestyle='-', color=color, alpha=alpha_value,
                             linewidth=(diff_linewidth * n))
 
     def pdf_cdf_lines(self, ax):
@@ -150,7 +150,11 @@ class Figure(object):
         :param ax:
         :return:
         """
-        self.plot_line(ax, self.select_pdf, self.select_pdf_shine, self.colors['pdf_line_color'], self.rv.pdf, 'PDF')
+        self.plot_line(ax, select=self.select_pdf,
+                       select_shine=self.select_pdf_shine,
+                       color=self.colors['pdf_line_color'],
+                       line_func=self.rv.pdf,
+                       line_label='PDF')
         self.plot_line(ax, self.select_cdf, self.select_cdf_shine, self.colors['cdf_line_color'], self.rv.cdf, 'CDF')
 
         # Отметьте точку на CDF
