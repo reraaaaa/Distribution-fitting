@@ -217,39 +217,30 @@ class Figure(object):
     def quantiles(self, ax):
         """ Quantiles and their plot properties. """
 
-        def get_line(self, q):
-            """ Compute the quantiles and set them as vertical lines. """
+        # Compute
+        quant = mquantiles(self.r)
 
-            # Compute
-            quant = mquantiles(self.r)
+        for q in [self.q1, self.q2, self.q3]:
+            if q:
+                """ Compute the quantiles and set them as vertical lines. """
+                # Plot
+                ax.vlines(quant[q - 1], ymin=0, ymax=self.rv.pdf(quant[q - 1]),
+                          color=self.colors[f'quant{q}_color'],
+                          dashes=self.lines['dashes_r'],
+                          linewidth=2, label=f'Q{q} = {quant[q - 1]:.2f}',
+                          zorder=0, clip_on=False)
 
-            # Plot
-            ax.vlines(quant[q - 1], ymin=0, ymax=self.rv.pdf(quant[q - 1]),
-                      color=self.colors[f'quant{q}_color'],
-                      dashes=self.lines['dashes_r'],
-                      linewidth=2, label=f'Q{q} = {quant[q - 1]:.2f}',
-                      zorder=0, clip_on=False)
-
-            # Label midway
-            ax.text(quant[q - 1], self.rv.pdf(quant[q - 1]) * 0.5, f'Q{q}',
-                    ha='center', fontsize=10,
-                    color=self.colors[f'quant{q}_color'])
-
-        # Streamlit control - checkboxes for Q1/2/3: on/off
-        if self.q1:
-            q = 1
-            get_line(self, q)
-
-        if self.q2:
-            q = 2
-            get_line(self, q)
-        if self.q3:
-            q = 3
-            get_line(self, q)
+                # Label midway
+                ax.text(quant[q - 1], self.rv.pdf(quant[q - 1]) * 0.5, f'Q{q}',
+                        ha='center', fontsize=10,
+                        color=self.colors[f'quant{q}_color'])
 
     def sigmas(self, ax):
-        """ Sigmas and their plot properties. """
-
+        """
+        Сигмы и их сюжетные свойства.
+        :param ax:
+        :return:
+        """
         for s in [self.s1, self.s2, self.s3]:
             if s:
                 """
@@ -257,9 +248,9 @@ class Figure(object):
                 Shade between: mean-std and mean+std which shows sigma.
                 """
                 x01 = s * self.r.std()
-                # Select only x values in between sigma range
+                # Выберите только значения x в диапазоне сигм.
                 x1 = self.x[(self.x > (self.r.mean() - x01)) & (self.x < (x01 + self.r.mean()))]
-                # This will shade 1/2/3 sigma, limiting y on the PDF border
+                # Это затенит 1/2/3 сигмы, ограничивая y на границе PDF.
                 ax.fill_between(x1, self.rv.pdf(x1), 0,
                                 color=self.colors['pdf_line_color'],
                                 alpha=0.2)
