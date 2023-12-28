@@ -114,79 +114,55 @@ class Figure(object):
             raise ValueError("Invalid mode. Expected 'Dark Mode' or 'Light Mode'")
         return plt
 
+    def plot_line(self, ax, select, select_shine, line_color, line_func, line_label):
+        """
+        Plot a line on the given axes.
+        :param ax: The axes on which to plot.
+        :param select: Whether to plot the line.
+        :param select_shine: Whether to apply shine effect.
+        :param line_color: The color of the line.
+        :param line_func: A function that takes x and returns y.
+        :param line_label: The label of the line.
+        """
+        if select:
+            ax.plot(self.x, line_func(self.x), linestyle='-', color=line_color, lw=1, label=line_label)
+            if select_shine:
+                n_lines = 5
+                diff_linewidth = 3
+                alpha_value = 0.1
+                for n in range(1, n_lines):
+                    ax.plot(self.x, line_func(self.x), linestyle='-', color=line_color, alpha=alpha_value,
+                            linewidth=(diff_linewidth * n))
+
     def pdf_cdf_lines(self, ax):
         """
         Как построить линии PDF/CDF и настроить «Shine»
         :param ax:
         :return:
         """
-        # Свет линий
-        n_lines = 5
-        diff_linewidth = 3
-        alpha_value = 0.1
-        # Распечатать замороженный PDF, если флажок активен.
-        if self.select_pdf:
-            ax.plot(self.x,
-                    self.rv.pdf(self.x),
-                    linestyle='-',
-                    color=self.colors['pdf_line_color'],
-                    lw=1,
-                    label='PDF')
-            # Установите яркость PDF, если флажок активен
-            if self.select_pdf_shine:
-                for n in range(1, n_lines):
-                    ax.plot(self.x,
-                            self.rv.pdf(self.x),
-                            linestyle='-',
-                            color=self.colors['pdf_line_color'],
-                            alpha=alpha_value,
-                            linewidth=(diff_linewidth * n))
-        # То же, что и выше, только для свойств CDF.
-        if self.select_cdf:
-            ax.plot(self.x,
-                    self.rv.cdf(self.x),
-                    linestyle='-',
-                    color=self.colors['cdf_line_color'],
-                    lw=1,
-                    label='CDF')
-            # Установите яркость CDF, если флажок активен
-            if self.select_cdf_shine:
-                for n in range(1, n_lines):
-                    ax.plot(self.x,
-                            self.rv.cdf(self.x),
-                            linestyle='-',
-                            color=self.colors['cdf_line_color'],
-                            alpha=alpha_value,
-                            linewidth=(diff_linewidth * n))
-            # Отметьте точку на CDF
-            if self.select_mark_p:
-                x_min, x_max = ax.get_xlim()
-                ax.vlines(self.x_cdf,
-                          ymin=0,
-                          ymax=self.rv.cdf(self.x_cdf),
-                          color=self.colors['cdf_line_color'],
-                          linestyle=':',
-                          linewidth=1)
-                ax.hlines(self.rv.cdf(self.x_cdf),
-                          xmin=x_min,
-                          xmax=self.x_cdf,
-                          color=self.colors['cdf_line_color'],
-                          linestyle=':',
-                          linewidth=1)
-                ax.annotate(f'({self.x_cdf:.2f}, {self.rv.cdf(self.x_cdf):.2f})',
-                            xy=(self.x_cdf, self.rv.cdf(self.x_cdf)),
-                            color=self.colors['cdf_line_color'])
-        if self.select_sf:
-            ax.plot(self.x, self.rv.sf(self.x), linestyle='-',
-                    color='plum',
-                    lw=1, label='SF')
+        self.plot_line(ax, self.select_pdf, self.select_pdf_shine, self.colors['pdf_line_color'], self.rv.pdf, 'PDF')
+        self.plot_line(ax, self.select_cdf, self.select_cdf_shine, self.colors['cdf_line_color'], self.rv.cdf, 'CDF')
 
-            if self.select_sf_shine:
-                for n in range(1, n_lines):
-                    ax.plot(self.x, self.rv.sf(self.x), '-',
-                            color='plum',
-                            alpha=alpha_value,
-                            linewidth=(diff_linewidth * n))
+        # Отметьте точку на CDF
+        if self.select_mark_p:
+            x_min, x_max = ax.get_xlim()
+            ax.vlines(self.x_cdf,
+                      ymin=0,
+                      ymax=self.rv.cdf(self.x_cdf),
+                      color=self.colors['cdf_line_color'],
+                      linestyle=':',
+                      linewidth=1)
+            ax.hlines(self.rv.cdf(self.x_cdf),
+                      xmin=x_min,
+                      xmax=self.x_cdf,
+                      color=self.colors['cdf_line_color'],
+                      linestyle=':',
+                      linewidth=1)
+            ax.annotate(f'({self.x_cdf:.2f}, {self.rv.cdf(self.x_cdf):.2f})',
+                        xy=(self.x_cdf, self.rv.cdf(self.x_cdf)),
+                        color=self.colors['cdf_line_color'])
+
+            self.plot_line(ax, self.select_sf, self.select_sf_shine, 'plum', self.rv.sf, 'SF')
 
     def boxplot(self, ax):
         """
