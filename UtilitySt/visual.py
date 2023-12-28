@@ -132,10 +132,11 @@ class Figure(object):
         alpha_value = 0.1
 
         if select:
-            ax.plot(self.x, func(self.x), linestyle='-', color=color, lw=1, label=label)
+            ax.plot(ax=self.x, func=func(self.x), linestyle='-', color=color, lw=1, label=label)
             if select_shine:
                 for n in range(1, n_lines):
-                    ax.plot(self.x, func(self.x), '-',
+                    ax.plot(ax=self.x, func=func(self.x),
+                            linestyle='-',
                             color=color,
                             alpha=alpha_value,
                             linewidth=(diff_linewidth * n))
