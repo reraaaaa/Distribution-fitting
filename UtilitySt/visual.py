@@ -144,6 +144,7 @@ class Figure(object):
         :param ax:
         :return:
         """
+
         # Проверка, можно ли вызвать rv.pdf, rv.cdf и rv.sf.
         for func in [self.rv.pdf, self.rv.cdf, self.rv.sf]:
             if not callable(func):
