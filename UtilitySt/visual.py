@@ -84,6 +84,7 @@ class Figure(object):
         self.select_cdf = select_cdf
         self.select_sf = select_sf
         self.colors = self.get_color_scheme(plot_mode)
+        self.plt = self.display_mode(plot_mode)
 
     def get_color_scheme(self, plot_mode):
         """
@@ -109,6 +110,8 @@ class Figure(object):
         elif plot_mode == 'Light Mode':
             plt.style.use('classic')
             plt.rcParams['figure.facecolor'] = 'white'
+        else:
+            raise ValueError("Invalid mode. Expected 'Dark Mode' or 'Light Mode'")
 
     def pdf_cdf_lines(self, ax):
         """
@@ -255,8 +258,7 @@ class Figure(object):
 
             x01 = s * self.r.std()
             # Select only x values in between sigma range
-            x1 = self.x[(self.x > (self.r.mean() - x01)) & \
-                        (self.x < (x01 + self.r.mean()))]
+            x1 = self.x[(self.x > (self.r.mean() - x01)) & (self.x < (x01 + self.r.mean()))]
             # This will shade 1/2/3 sigma, limiting y on the PDF border
             ax.fill_between(x1, self.rv.pdf(x1), 0,
                             color=self.colors['pdf_line_color'],
@@ -345,10 +347,8 @@ class Figure(object):
                 # as we want to have x axis of the distributions and
                 # boxplot aligned.
                 ax[1].set_xlim(ax[0].get_xlim())
-
                 # Move y label to apropriate ax.
                 ax[0].set_ylabel(self.ylabel)
-
 
         else:
             # Single fig. mode
