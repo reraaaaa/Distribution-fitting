@@ -220,20 +220,20 @@ class Figure(object):
         # Compute
         quant = mquantiles(self.r)
 
-        for q in [self.q1, self.q2, self.q3]:
+        for idx, q in enumerate([self.q1, self.q2, self.q3], start=1):
             if q:
                 """ Compute the quantiles and set them as vertical lines. """
                 # Plot
-                ax.vlines(quant[q - 1], ymin=0, ymax=self.rv.pdf(quant[q - 1]),
-                          color=self.colors[f'quant{q}_color'],
+                ax.vlines(quant[idx - 1], ymin=0, ymax=self.rv.pdf(quant[idx - 1]),
+                          color=self.colors[f'quant{idx}_color'],
                           dashes=self.lines['dashes_r'],
-                          linewidth=2, label=f'Q{q} = {quant[q - 1]:.2f}',
+                          linewidth=2, label=f'Q{idx} = {quant[idx - 1]:.2f}',
                           zorder=0, clip_on=False)
 
                 # Label midway
-                ax.text(quant[q - 1], self.rv.pdf(quant[q - 1]) * 0.5, f'Q{q}',
+                ax.text(quant[idx - 1], self.rv.pdf(quant[idx - 1]) * 0.5, f'Q{idx}',
                         ha='center', fontsize=10,
-                        color=self.colors[f'quant{q}_color'])
+                        color=self.colors[f'quant{idx}_color'])
 
     def sigmas(self, ax):
         """
