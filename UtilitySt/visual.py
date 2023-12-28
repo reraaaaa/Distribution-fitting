@@ -135,8 +135,6 @@ class Figure(object):
                             alpha=alpha_value,
                             linewidth=(diff_linewidth * n)
                             )
-
-        # Same as above, only for the CDF properties
         if self.select_cdf:
             ax.plot(self.x, self.rv.cdf(self.x), linestyle='-',
                     color=self.colors['cdf_line_color'],
@@ -148,7 +146,7 @@ class Figure(object):
                             color=self.colors['cdf_line_color'],
                             alpha=alpha_value,
                             linewidth=(diff_linewidth * n))
-                    # Mark a point on the CDF
+            # Mark a point on the CDF
             if self.select_mark_p:
                 xmin, xmax = ax.get_xlim()
                 ax.vlines(self.x_cdf, ymin=0, ymax=self.rv.cdf(self.x_cdf),
