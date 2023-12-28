@@ -243,101 +243,57 @@ class Figure(object):
                 fill=False,  # hatch='x',
                 linewidth=1, alpha=1, label='Sample distribution')
 
-    def get_figure(self, fig_type):
-        """
-        Figure layout: single figure, or two as a subplot.
-        I want this, because boxplot (which is placed as subplot)
-        can be set to: on/off.
-        """
 
+    def setup_figure(self, fig_type):
         if fig_type == 'dual':
             fig, ax = plt.subplots(2, 1,
                                    gridspec_kw={'height_ratios': [9, 0.7]})
-
-            return fig, ax
-
         else:
             fig, ax = plt.subplots(1, 1)
-            return fig, ax
+        return fig, ax
+
+    def plot_lines(self, ax):
+        Figure.pdf_cdf_lines(self, ax=ax)
+        if self.q1 or self.q2 or self.q3:
+            Figure.quantiles(self, ax=ax)
+        if self.s1 or self.s2 or self.s3:
+            Figure.sigmas(self, ax=ax)
+        if self.select_hist:
+            Figure.histogram(self, ax=ax)
+
+    def set_legend(self, ax):
+        legend = ax.legend(bbox_to_anchor=(0, 1.02, 1, 0.2),
+                           loc="lower left", mode="expand",
+                           borderaxespad=0, ncol=3)
+        legend.get_frame().set_edgecolor("#525252")
 
     def figure_display_control(self):
-        """
-        Set dual figure: this will have distribution and boxplot.
-        In this case we have distributions and its properties on the
-        ax[0], while if boxplot is 'on' it will be set to ax[1].
-        """
-
         plt.rcParams.update(self.global_rc_params)
 
-        # Streamlit control - if boxplot is true
         if self.select_boxplot:
-            fig, ax = Figure.get_figure(self, 'dual')
+            fig, ax = self.setup_figure('dual')
+            self.plot_lines(ax[0])
+            self.set_legend(ax[0])
 
-            Figure.pdf_cdf_lines(self, ax=ax[0])
-
-            if self.q1 or self.q2 or self.q3:
-                Figure.quantiles(self, ax=ax[0])
-
-            if self.s1 or self.s2 or self.s3:
-                Figure.sigmas(self, ax=ax[0])
-
-            if self.select_hist:
-                Figure.histogram(self, ax=ax[0])
-
-            legend = ax[0].legend(bbox_to_anchor=(0, 1.02, 1, 0.2),
-                                  loc="lower left", mode="expand",
-                                  borderaxespad=0, ncol=3)
-            legend.get_frame().set_edgecolor("#525252")
-
-            # In case all distribution prop. from ax[0] are off set the
-            # boxplot on the ax[0] if the boxplot is on.
             if (self.select_cdf == False and self.select_pdf == False
                     and self.select_hist == False and self.select_sf == False):
-
-                fig, ax = Figure.get_figure(self, 'single')
-
+                fig, ax = self.setup_figure('single')
                 Figure.boxplot(self, ax=ax)
-
             else:
-
                 Figure.boxplot(self, ax=ax[1])
-
-                # Get xlim from the upper image and port it to the lower
-                # as we want to have x axis of the distributions and
-                # boxplot aligned.
                 ax[1].set_xlim(ax[0].get_xlim())
-                # Move y label to apropriate ax.
                 ax[0].set_ylabel(self.ylabel)
-
         else:
-            # Single fig. mode
-            fig, ax = Figure.get_figure(self, 'single')
-
-            Figure.pdf_cdf_lines(self, ax=ax)
-
-            if self.select_hist:
-                Figure.histogram(self, ax=ax)
-
-            if self.q1 or self.q2 or self.q3:
-                Figure.quantiles(self, ax=ax)
-
-            if self.s1 or self.s2 or self.s3:
-                Figure.sigmas(self, ax=ax)
-
+            fig, ax = self.setup_figure('single')
+            self.plot_lines(ax)
             ax.set_xlabel(self.xlabel)
             ax.set_ylabel(self.ylabel)
+            self.set_legend(ax)
 
-            legend = ax.legend(bbox_to_anchor=(0, 1.02, 1, 0.2),
-                               loc="lower left", mode="expand",
-                               borderaxespad=0, ncol=3)
-            legend.get_frame().set_edgecolor("#525252")
-
-        # If nothing is selected from the 'What to show on the Figure'
         if (self.select_cdf == False and self.select_pdf == False
                 and self.select_hist == False and self.select_boxplot == False
                 and self.select_sf == False):
-            fig, ax = Figure.get_figure(self, 'single')
-
+            fig, ax = self.setup_figure('single')
             ax.text(0.1, 0.5, 'Tabula rasa',
                     va='center', fontsize=20)
             ax.spines['left'].set_visible(False)
