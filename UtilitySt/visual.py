@@ -144,19 +144,6 @@ class Figure(object):
         :param ax:
         :return:
         """
-
-        # Проверка, можно ли вызвать rv.pdf, rv.cdf и rv.sf.
-        for func in [self.rv.pdf, self.rv.cdf, self.rv.sf]:
-            if not callable(func):
-                raise ValueError(f"{func} must be a function")
-
-        # Проверка, работают ли rv.pdf, rv.cdf и rv.sf с self.x.
-        try:
-            for func in [self.rv.pdf, self.rv.cdf, self.rv.sf]:
-                func(self.x)
-        except Exception as e:
-            raise ValueError(f"{func} failed with error: {e}")
-
         self.plot_with_shine(ax, self.select_pdf, self.select_pdf_shine, self.colors['pdf_line_color'], self.rv.pdf,
                              'PDF')
         self.plot_with_shine(ax, self.select_cdf, self.select_cdf_shine, self.colors['cdf_line_color'], self.rv.cdf,
