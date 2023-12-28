@@ -258,27 +258,26 @@ def p_explore():
     # Здесь я определяю класс Figure
     #######  I define a Figure class here #######
 
-
     fig = fg.Figure(select_hist=select_hist,
-                select_pdf_shine=select_pdf_shine,
-                select_cdf_shine=select_cdf_shine,
-                select_sf_shine=select_sf_shine,
-                select_mark_p=select_mark_P,
-                x_cdf=x_cdf,
-                select_boxplot=select_boxplot,
-                q1=q1,
-                q2=q2,
-                q3=q3,
-                s1=s1,
-                s2=s2,
-                s3=s3,
-                x=x1,
-                r=r1,
-                rv=rv1,
-                plot_mode=plot_mode,
-                select_pdf=select_pdf,
-                select_cdf=select_cdf,
-                select_sf=select_sf)
+                    select_pdf_shine=select_pdf_shine,
+                    select_cdf_shine=select_cdf_shine,
+                    select_sf_shine=select_sf_shine,
+                    select_mark_p=select_mark_P,
+                    x_cdf=x_cdf,
+                    select_boxplot=select_boxplot,
+                    q1=q1,
+                    q2=q2,
+                    q3=q3,
+                    s1=s1,
+                    s2=s2,
+                    s3=s3,
+                    x=x1,
+                    r=r1,
+                    rv=rv1,
+                    plot_mode=plot_mode,
+                    select_pdf=select_pdf,
+                    select_cdf=select_cdf,
+                    select_sf=select_sf)
 
     def port_to_streamlit():
         # Используем класс Figure, чтобы получить то, что будет отображаться на графике.

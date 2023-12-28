@@ -57,8 +57,9 @@ class Figure(object):
         'quant3_color': '#b35806'
     }
 
-    def __init__(self, select_hist, select_pdf_shine,
-                 select_cdf_shine, select_sf_shine, select_mark_p, x_cdf, select_boxplot,
+    def __init__(self, select_hist,
+                 select_pdf_shine, select_cdf_shine, select_sf_shine,
+                 select_mark_p, x_cdf, select_boxplot,
                  q1, q2, q3, s1, s2, s3,
                  x, r, rv,
                  plot_mode, select_pdf, select_cdf, select_sf):
