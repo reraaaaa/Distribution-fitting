@@ -216,9 +216,7 @@ def p_explore():
         # Поскольку виджеты еще не поддерживают латекс, это хакерский способ добавить сигму
         # рядом с каждым флажком, используя столбцы.
         st.markdown("**Область тени **")
-        left_std, sig1, middle_std, sig2, right_std, sig3 = st.columns([0.012, 0.044,
-                                                                        0.02, 0.038,
-                                                                        0.02, 0.038])
+        left_std, sig1, middle_std, sig2, right_std, sig3 = st.columns([0.012, 0.044, 0.02, 0.038, 0.02, 0.038])
         with sig1:
             st.markdown("1$\sigma$")
         with left_std:
@@ -346,7 +344,7 @@ def p_explore():
         if len(name) == 0:
             name = ''
         else:
-            name = str([i for i in name]).strip(" [] ").strip("'").replace("'", '')+','
+            name = str([i for i in name]).strip(" [] ").strip("'").replace("'", '') + ','
         return name
 
     name = get_n(name)
@@ -375,6 +373,7 @@ def p_explore():
                     <a href="data:file/txt;base64,{b64}" \
                         download="{code_file}">Кликните сюда</a>',
                     unsafe_allow_html=True)
+
     # Нажмите кнопку, чтобы получить код Python и загрузить опцию гиперссылки.
     if export_code:
         get_code()
