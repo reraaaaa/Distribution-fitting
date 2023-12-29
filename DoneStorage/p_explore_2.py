@@ -24,132 +24,84 @@ def p_explore():
     doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = dictionaries.values()
 
     def make_expanders(expander_name, sidebar=True):
-        """ Set up expanders which contains a set of options. """
+        """
+        Настройка расширителей, которые содержат набор опций
+        :param sidebar:
+        :param expander_name: вложение
+        :return: Расширение
+        """
         if sidebar:
             try:
                 return st.sidebar.expander(expander_name)
             except:
                 return st.sidebar.beta_expander(expander_name)
 
-    st.sidebar.subheader("To explore:")
-    with make_expanders("Select distribution"):
+    def create_slider(param, parameter_value, step_value):
+        """ Создает ползунок с заданным параметром и значением шага. """
+        slider_i = st.slider('Значение по умолчанию: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
+                             min_value=0.01,
+                             value=float("{:.2f}".format(parameter_value)),
+                             max_value=10.00,
+                             step=step_value)
+        return slider_i
 
-        # Distribution names
+    def create_manual_input(param, parameter_value):
+        """ Создает поле ввода для ручного ввода значения параметра. """
+        manual = float(st.text_input('Значение по умолчанию: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
+                                     float("{:.2f}".format(parameter_value))))
+        return manual
+
+    st.sidebar.subheader("Исследовать")
+
+    with make_expanders("Выбрать распределение"):
+        # функция имен
         display = s.get_distribution_names()
-
-        # Create select box widget containing all SciPy function
-        select_distribution = st.selectbox(
-            'Click below (or type) to choose a distribution',
-            display)
-
-        st.markdown("**Parameters**")
+        # Создать виджет окна выбора, содержащий все функции SciPy
+        select_distribution = st.selectbox('Нажмите ниже (или введите), чтобы выбрать распределение', display)
+        st.markdown("**Параметры**")
 
         def obtain_functional_data():
             """
-            This function will create sliders (or input boxes) for
-            each available parameter of the selected distribution.
-            Sliders will initiate with the parameter default value, as
-            obtained from the SciPy library.
-            Advanced options include sliders with smaller step interval, or
-            input boxes if Users want to manually specify parameter values.
+            Эта функция создаст ползунки (или поля ввода) для каждого
+            доступного параметра выбранного распределения. Ползунки будут запускаться
+            со значением параметра по умолчанию, полученным из библиотеки SciPy.
+            Дополнительные параметры включают ползунки с меньшим интервалом шага или поля ввода,
+            если пользователи хотят вручную указать значения параметров.
             """
-
-            # all_dist_params_dict:
-            # See helper function for details; output example:
+            # parameters_dic:
+            # Подробности смотрите во вспомогательной функции; пример вывода:
             # 'alpha': {'a': '3.57', 'loc': '0.00', 'scale': '1.00'},
-
-            # Advance mode will contain few more options
-            advanced_mode = st.checkbox("Click to fine-tune parameters",
-                                        value=False)
-
+            advanced_mode = st.checkbox("Нажмите, чтобы настроить параметры", value=False)
+            vary_parameters_mode = 'Интервал шага ползунка: 0.10'
             if advanced_mode:
-                vary_parameters_mode = st.radio("Available options:",
-                                                ('Slider stepping interval: 0.10',
-                                                 'Slider stepping interval: 0.01',
-                                                 'Manually input parameter values')
+                vary_parameters_mode = st.radio("Доступные параметры:",
+                                                ('Интервал шага ползунка: 0.10',
+                                                 'Интервал шага ползунка: 0.01',
+                                                 'Ручной ввод значений параметров')
                                                 )
-
-            # "select_distribution" is defined streamlit selectbox
             if select_distribution in parameters_dic.keys():
                 sliders_params = []
-                # Create slider for each parameter
                 for i, param in enumerate(parameters_dic[f'{select_distribution}']):
                     parameter_value = float(parameters_dic.get(f'{select_distribution}').get(param))
 
-                    # As the majority of the parameters are not defined for
-                    # values below 0; I will limit minimum value to 0.01.
-                    # If user know that they can go below, it's possible to
-                    # enter those values manually.
-                    # Scale can not be 0 or less than
-                    min_param_value = 0.01
-
-                    def sliders():
-                        """
-                        Function that defines a slider. It's going to be
-                        initiated with the default value as defined in SciPy.
-                        Slider min value of 0.01; max value of 10 - are added
-                        arbitrary.
-                        """
-
-                        slider_i = st.slider('Default value: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
-                                             min_value=min_param_value,
-                                             value=float("{:.2f}".format(parameter_value)),
-                                             max_value=10.00,
-                                             step=step_value)
-
-                        return slider_i
-
-                    # Doing try and except which will allow slider stepping
-                    # interval to be changed in the advanced mode.
                     try:
-                        if vary_parameters_mode == 'Slider stepping interval: 0.10':
-                            step_value = 0.10
-                            slider_i = sliders()
+                        if vary_parameters_mode == 'Интервал шага ползунка: 0.10':
+                            slider_i = create_slider(param, parameter_value, 0.10)
                             sliders_params.append(slider_i)
-
-                        if vary_parameters_mode == 'Slider stepping interval: 0.01':
-                            step_value = 0.01
-                            slider_i = sliders()
+                        if vary_parameters_mode == 'Интервал шага ползунка: 0.01':
+                            slider_i = create_slider(param, parameter_value, 0.01)
                             sliders_params.append(slider_i)
-
-                        if vary_parameters_mode == 'Manually input parameter values':
-                            manual = float(
-                                st.text_input('Default value: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
-                                              float("{:.2f}".format(parameter_value))))
+                        if vary_parameters_mode == 'Ручной ввод значений параметров':
+                            manual = create_manual_input(param, parameter_value)
                             sliders_params.append(manual)
                     except:
-                        step_value = 0.10
-                        slider_i = sliders()
+                        slider_i = create_slider(param, parameter_value, 0.10)
                         sliders_params.append(slider_i)
 
-                # Add a note to user so that they know what to do in case
-                # they select a parameter value which is not valid.
-                # st.markdown("**Notes**")
-
-                # st.info(
-                #        """
-                #        To shift and/or scale the distribution use
-                #        the **loc** and **scale** parameters. In case of
-                #        **Value Error**: you probably selected a shape
-                #        parameter value for which a distribution is not defined
-                #        (most often they can't be $$\leq$$0), in that case just
-                #         select a different value.
-                #        """
-                #        )
-
-                # For each selected distribution create a link to the
-                # official SciPy documentation page about that function.
-                st.markdown("**SciPy official documentation:**")
+                st.markdown("**SciPy официальная документация:**")
                 scipy_link = f'[{url_dic[select_distribution][1]}]({url_dic[select_distribution][0]})'
-
-                # st.info(f"""
-                #        Read more about:
-                #        [**{name_url_dict[select_distribution][1]}**]\
-                #            ({name_url_dict[select_distribution][0]})
-                #        """)
-
-                st.info(f""" 
-                        Read more about:
+                st.info(f"""
+                        Подробнее о: 
                         {scipy_link}
                         """)
 
@@ -157,63 +109,58 @@ def p_explore():
 
         sliders_params = obtain_functional_data()
 
-    # Generate title based on the selected distribution
+    # Создать заголовок на основе выбранного распределения
     if select_distribution:
-        st.markdown(f"<h1 style='text-align: center;'>{fullname_dic[select_distribution]}</h1>",
-                    unsafe_allow_html=True)
+        st.markdown(f"<h1 style='text-align: center;'>{fullname_dic[select_distribution]}</h1>", unsafe_allow_html=True)
 
-    def get_multi_parameters(c_params):
+    def get_multi_parameters(select_distribution, *c_params):
+        """
+        Эта функция принимает несколько аргументов, которые будут значениями параметров функции.
+        Текущие scipy-функции имеют от 2 до 6 параметров, два из которых всегда одинаковы: loc и scale.
+        :param select_distribution: Name of the distribution
+        :param c_params: Список параметров функции распределения
+        :return x: массив float64 - Генерируются равномерно расположенные числа
+        :return r: массив float64 - Сгенерированные случайные числа с использованием выбранного распределения.
+        :return rv: Frozen распределение
+        """
         size = 400
         dist = getattr(stats, select_distribution)
 
-        # Generate evenly spaced numbers over a specified interval
-        x = np.linspace(dist.ppf(0.001, *c_params[0:(len(c_params) - 2)],
-                                 loc=c_params[-2], scale=c_params[-1]),
-                        dist.ppf(0.999, *c_params[0:(len(c_params) - 2)],
-                                 loc=c_params[-2], scale=c_params[-1]), size)
+        if len(c_params) < 2:
+            raise ValueError("At least two parameters are required")
 
-        # Create a frozen random variable "RV" using function parameters
-        rv = dist(*c_params[0:(len(c_params) - 2)], loc=c_params[-2],
-                  scale=c_params[-1])
-
-        # Generate random numbers using the selected distribution
-        r = dist.rvs(*c_params[0:(len(c_params) - 2)], loc=c_params[-2],
-                     scale=c_params[-1], size=size)
+        *dist_params, loc, scale = c_params
+        x = np.linspace(dist.ppf(0.001, *dist_params, loc=loc, scale=scale),
+                        dist.ppf(0.999, *dist_params, loc=loc, scale=scale), size)
+        rv = dist(*dist_params, loc=loc, scale=scale)
+        r = dist.rvs(*dist_params, loc=loc, scale=scale, size=size)
 
         return x, r, rv
 
-    x1, r1, rv1 = get_multi_parameters(sliders_params)
+    x1, r1, rv1 = get_multi_parameters(select_distribution, *sliders_params)
 
-    # Getting equations to display
-    # Due to several different formatting of the equations, in order for them
-    # to properly display in latex mode, I am using markdown for a few:
+    # Получение уравнений для отображения. Из-за нескольких различных форматов
+    # уравнений, чтобы они правильно отображались в латексном режиме, используем уценку:
     if select_distribution in functions_dic.keys():
-
-        if select_distribution == 'crystalball' \
-                or select_distribution == 'f' \
-                or select_distribution == 'genextreme' \
-                or select_distribution == 'loglaplace':
+        if select_distribution == 'crystalball' or select_distribution == 'f' or select_distribution == 'genextreme' or select_distribution == 'loglaplace':
             st.markdown(f'{functions_dic[select_distribution]}')
         else:
             st.latex(f'{functions_dic[select_distribution]}')
 
-    # Additional as I noticed that it takes long to compute levy_stable
+    # Дополнительно, поскольку я заметил, что вычисление levy_stable занимает много времени
     if select_distribution == 'levy_stable':
-        st.write('*Note: it take longer to compute.')
+        st.write('*Примечание: для вычисления требуется больше времени.')
 
-    # Figure display properties expander
-    with make_expanders("Tweak display"):
+    # Расширитель свойств отображения рисунка
+    with make_expanders("Настройка отображения"):
+        st.markdown("**Выберите режим фигуры:**")
+        plot_mode = st.radio("Опции", ('Dark Mode', 'Light Mode'))
+        st.markdown("**Что показать на рисунке?**")
+        select_hist = st.checkbox('Гистограмма', value=True)
 
-        st.markdown("**Select Figure Mode:**")
-        plot_mode = st.radio("Options", ('Dark Mode', 'Light Mode'))
-
-        st.markdown("**What to show on the Figure?**")
-
-        select_hist = st.checkbox('Histogram', value=True)
-
-        # Put checkboxes for PDF and Shine in a column
-        # If PDF is True (on): Shine can be True/False (on/off)
-        # If PDF checkbox is False, remove Shine checkbox
+        # Поставьте галочки для PDF и Shine в столбик. Если PDF имеет значение True (вкл.):
+        # Shine может быть True/False (вкл./выкл.).
+        # Если флажок PDF установлен False, снимите флажок Shine.
         select_pdf, select_pdf_shine = st.columns(2)
         with select_pdf:
             select_pdf = st.checkbox('PDF', value=True)
@@ -223,7 +170,7 @@ def p_explore():
                 with select_pdf_shine:
                     select_pdf_shine = st.checkbox('Shine', value=True)
 
-        # Same functionality as for the PDF above
+        # Та же функциональность, что и для PDF выше
         select_cdf, select_cdf_shine = st.columns(2)
         with select_cdf:
             select_cdf = st.checkbox('CDF', value=False)
@@ -233,20 +180,20 @@ def p_explore():
                 with select_cdf_shine:
                     select_cdf_shine = st.checkbox('Shine ', value=True)
 
-                    # Show/Hide and explore
+        # Показать/скрыть и исследовать
         if select_cdf == False:
             select_mark_P = st.empty()
             x_cdf = st.empty()
         else:
             select_mark_P = st.checkbox('P(X<=x)', value=False)
             if select_mark_P:
-                x_cdf = st.slider('Set x value to get: (x, P(X<=x))',
+                x_cdf = st.slider('Установите значение x, чтобы получить: (x, P(X<=x))',
                                   min_value=round(min(r1), 2),
                                   value=0.5,
                                   max_value=round(max(r1), 2),
                                   step=0.10)
 
-        # Same functionality as for the PDF/CDF above
+        # Та же функциональность, что и для PDF/CDF выше
         select_sf, select_sf_shine = st.columns(2)
         with select_sf:
             select_sf = st.checkbox('SF', value=False)
@@ -256,11 +203,11 @@ def p_explore():
                 with select_sf_shine:
                     select_sf_shine = st.checkbox('Shine   ', value=True)
 
-                    # Show/hide boxplot
-        select_boxplot = st.checkbox('Boxplot', value=True)
+        # Показать/скрыть блочную диаграмму
+        select_boxplot = st.checkbox('Блочная диаграмма', value=True)
 
-        # Show/hide quantile lines
-        st.markdown("**Show quantile(s):**")
+        # Показать/скрыть строки квантилей
+        st.markdown("**Показать квантили:**")
         left, middle, right = st.columns(3)
         with left:
             q1 = st.checkbox('Q1', value=False)  # , [0.25,0.5,0.75]
@@ -269,47 +216,42 @@ def p_explore():
         with right:
             q3 = st.checkbox('Q3', value=False)
 
-        # Show/hide shaded sigma region(s)
-        # Since widgets don't support latex yet, this is hacky way to add
-        # sigma next to each checkbox using columns
-        st.markdown("**Shade region(s) of**")
-        left_std, sig1, middle_std, sig2, right_std, sig3 = \
-            st.columns([0.012, 0.044,
-                        0.02, 0.038,
-                        0.02, 0.038])
+        # Показать/скрыть заштрихованные сигма-области.
+        # Поскольку виджеты еще не поддерживают латекс, это хакерский способ добавить сигму
+        # рядом с каждым флажком, используя столбцы.
+        st.markdown("**Область тени **")
+        left_std, sig1, middle_std, sig2, right_std, sig3 = st.columns([0.012, 0.044,
+                                                                        0.02, 0.038,
+                                                                        0.02, 0.038])
         with sig1:
             st.markdown("1$\sigma$")
         with left_std:
-            # Need to leave name empty,as we want sigma
+            # Нужно оставить имя пустым, так как нам нужна сигма
             s1 = st.checkbox('', value=False)
         with sig2:
             st.markdown("2$\sigma$")
         with middle_std:
-            # Need empty, with space so that generate key doesn't overlap
+            # Нужен пустой, с пробелом, чтобы ключ генерации не перекрывался
             s2 = st.checkbox(' ', value=False)
         with sig3:
             st.markdown("3$\sigma$")
         with right_std:
             s3 = st.checkbox('   ', value=False)
 
-        # Show/hide a column with statistical information of the distribution
-        st.markdown("**Generate descriptive statistics**")
-        df_stat = st.checkbox('Yes', value=False)
+        # Показать/скрыть столбец со статистической информацией о распределении
+        st.markdown("**Создать описательную статистику**")
+        df_stat = st.checkbox('Да', value=False)
 
-    # Export options
-    with make_expanders("Export:"):
+    # Параметры экспорта
+    with make_expanders("Экспорт:"):
         st.info("""
-                Want **python script?** (It will contain: pdf, cdf, sf, 
-                                        histogram and boxplot)
+                Хотите **скрипт python?** (Он будет содержать: pdf, cdf, sf, гистограмму и диаграмму)
                 """)
-        export_code = st.button('Generate Python code')
+        export_code = st.button('Сгенерировать код Python')
         if export_code:
-            st.write('*Code is below the Figure')
+            st.write('*Код находится под графиком')
 
-        # st.write('**Generated code will contain: pdf, cdf, sf, histogram and\
-        #         boxplot*.')
-
-    # A little of breathing room before I display 'About'
+    # Немного передышки, прежде чем я покажу «О программе».
     st.sidebar.write("")
     st.sidebar.write("")
     st.sidebar.write("")
@@ -374,29 +316,25 @@ def p_explore():
     # Generate Python code
     def how_many_params(sliders_params, s, select_distribution):
         if len(sliders_params) == 2:
-            names = []
-            ps = []
+            names = ""
+            ps = ""
             scale = f'scale={sliders_params[-1]}'
             loc = f'loc={sliders_params[-2]}'
+            return scale, loc, names, ps
+
         else:
             scale = f'scale={sliders_params[-1]}'
             loc = f'loc={sliders_params[-2]}'
 
             names = []
             ps = []
-            distribution_dict = s.get_dictionaries_stat().get(select_distribution)
-            if distribution_dict is None:
-                raise KeyError(f"{select_distribution} not found in the returned dictionary.")
+            for i, param in enumerate(sliders_params[0:-2]):
+                param_name = s.get_dictionaries_stat().get(f'{select_distribution}').shapes.split(', ')
+                name = f'{param_name[i]}'
+                p = f'{param_name[i]}={param}'
 
-            param_names = distribution_dict.get('shapes')
-            if param_names is not None:
-                param_names = param_names.split(', ')
-                for i, param in enumerate(sliders_params[0:-2]):
-                    name = f'{param_names[i]}'
-                    p = f'{param_names[i]}={param}'
-
-                    names.append(name)
-                    ps.append(p)
+                names.append(name)
+                ps.append(p)
 
         return scale, loc, names, ps
 
