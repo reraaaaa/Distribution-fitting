@@ -82,7 +82,7 @@ def p_explore():
             if select_distribution in parameters_dic.keys():
                 sliders_params = []
                 for i, param in enumerate(parameters_dic[f'{select_distribution}']):
-                    parameter_value = float(parameters_dic.get(f'{select_distribution}').get(param))
+                    parameter_value = float(parameters_dic.get(f'{select_distribution[i]}').get(param))
 
                     try:
                         if vary_parameters_mode == 'Интервал шага ползунка: 0.10':
