@@ -37,7 +37,13 @@ def p_explore():
                 return st.sidebar.beta_expander(expander_name)
 
     def create_slider(param, parameter_value, step_value):
-        """ Создает ползунок с заданным параметром и значением шага. """
+        """
+        Создает ползунок с заданным параметром и значением шага.
+        :param param:
+        :param parameter_value:
+        :param step_value:
+        :return:
+        """
         slider_i = st.slider('Значение по умолчанию: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
                              min_value=0.01,
                              value=float("{:.2f}".format(parameter_value)),
@@ -46,7 +52,12 @@ def p_explore():
         return slider_i
 
     def create_manual_input(param, parameter_value):
-        """ Создает поле ввода для ручного ввода значения параметра. """
+        """
+        Создает поле ввода для ручного ввода значения параметра.
+        :param param:
+        :param parameter_value:
+        :return:
+        """
         manual = float(st.text_input('Значение по умолчанию: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
                                      float("{:.2f}".format(parameter_value))))
         return manual
@@ -58,6 +69,7 @@ def p_explore():
         display = s.get_distribution_names()
         # Создать виджет окна выбора, содержащий все функции SciPy
         select_distribution = st.selectbox('Нажмите ниже (или введите), чтобы выбрать распределение', display)
+
         st.markdown("**Параметры**")
 
         def obtain_functional_data():
@@ -138,10 +150,7 @@ def p_explore():
     # Получение уравнений для отображения. Из-за нескольких различных форматов
     # уравнений, чтобы они правильно отображались в латексном режиме, используем уценку:
     if select_distribution in functions_dic.keys():
-        if select_distribution == 'crystalball' or select_distribution == 'f' or select_distribution == 'genextreme' or select_distribution == 'loglaplace':
-            st.markdown(f'{functions_dic[select_distribution]}')
-        else:
-            st.latex(f'{functions_dic[select_distribution]}')
+        st.latex(f'{functions_dic[select_distribution]}')
 
     # Дополнительно, поскольку я заметил, что вычисление levy_stable занимает много времени
     if select_distribution == 'levy_stable':
