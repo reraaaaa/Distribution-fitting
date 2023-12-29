@@ -125,10 +125,6 @@ def p_explore():
         """
         size = 400
         dist = getattr(stats, select_distribution)
-
-        if len(c_params) < 2:
-            raise ValueError("At least two parameters are required")
-
         *dist_params, loc, scale = c_params
         x = np.linspace(dist.ppf(0.001, *dist_params, loc=loc, scale=scale),
                         dist.ppf(0.999, *dist_params, loc=loc, scale=scale), size)
