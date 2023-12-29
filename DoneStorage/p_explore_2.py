@@ -162,52 +162,23 @@ def p_explore():
         st.markdown(f"<h1 style='text-align: center;'>{fullname_dic[select_distribution]}</h1>",
                     unsafe_allow_html=True)
 
-    def get_multi_parameters(*c_params):
-        """
-        This function accepts multiple arguments which will be function
-        parameter values. Each function have 2-6 parameters, two being always
-        the same: loc and scale.
-
-        Parameters
-        ----------
-        *c_params : a list of parameters of the distribution function.
-
-        Returns
-        -------
-        x : array of float64
-            Generated evenly spaced numbers.
-        r : array of float64
-            Generated random numbers using the selected distribution.
-        rv : frozen distribution
-
-        """
-
-        # Sample size
+    def get_multi_parameters(c_params):
         size = 400
-        # Current scipy functions have from 2 to 6 parameters (counting loc &
-        # scale) which will be in *c_params - as obtained from sliders/input box
+        dist = getattr(stats, select_distribution)
 
-        # To be able to use shape parameters and loc/scale values
-        # I just tell which are which, as loc/scale are always second to last and last
-        for j, param in enumerate(c_params):
-            # Returns the value of the named attribute of an object
-            dist = getattr(stats, select_distribution)
+        # Generate evenly spaced numbers over a specified interval
+        x = np.linspace(dist.ppf(0.001, *c_params[0:(len(c_params) - 2)],
+                                 loc=c_params[-2], scale=c_params[-1]),
+                        dist.ppf(0.999, *c_params[0:(len(c_params) - 2)],
+                                 loc=c_params[-2], scale=c_params[-1]), size)
 
-            # Generate evenly spaced numbers over a specified interval
-            x = np.linspace(dist.ppf(0.001, *c_params[j][0:(len(*c_params) - 2)],
-                                     loc=c_params[0][-2], scale=c_params[0][-1]),
-                            dist.ppf(0.999, *c_params[j][0:(len(*c_params) - 2)],
-                                     loc=c_params[0][-2], scale=c_params[0][-1]), size)
+        # Create a frozen random variable "RV" using function parameters
+        rv = dist(*c_params[0:(len(c_params) - 2)], loc=c_params[-2],
+                  scale=c_params[-1])
 
-            # Create a frozen random variable "RV" using function parameters
-            # It will be used to show the PDF
-            rv = dist(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2],
-                      scale=c_params[0][-1])
-
-            # Generate random numbers using the selected distribution
-            # These will be used for making histogram
-            r = dist.rvs(*c_params[j][0:(len(*c_params) - 2)], loc=c_params[0][-2],
-                         scale=c_params[0][-1], size=size)
+        # Generate random numbers using the selected distribution
+        r = dist.rvs(*c_params[0:(len(c_params) - 2)], loc=c_params[-2],
+                     scale=c_params[-1], size=size)
 
         return x, r, rv
 
