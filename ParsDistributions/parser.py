@@ -136,7 +136,7 @@ class DistributionParser(object):
         :return: [[3.570477051665046, 0.0, 1.0], [0.0, 1.0],...
         """
         names = self._extract_distribution_names()
-        parse_params = sorted(stats._distr_params.distcont)
+        parse_params = stats._distr_params.distcont
         df = pd.DataFrame(parse_params, columns=['dist', 'param'])
         df2 = pd.DataFrame(names, columns=['dist'])
         inner_join = pd.merge(df2, df, on='dist', how='left')
@@ -202,3 +202,15 @@ class DistributionParser(object):
 
     def get_dictionaries(self):
         return self.dictionaries
+
+
+s = DistributionParser(type_rv='continuous')
+ss = s.get_distribution_names()
+pp = s.get_distribution_parameters()
+
+parse_params = stats._distr_params.distcont
+for d in ss:
+    dist = getattr(stats, d)
+    print(dist.name, dist.shapes)
+
+print(pp)
