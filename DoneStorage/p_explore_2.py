@@ -104,6 +104,8 @@ def p_explore():
                         dist.ppf(0.999, *dist_params, loc=loc, scale=scale), size)
         rv = dist(*dist_params, loc=loc, scale=scale)
         r = dist.rvs(*dist_params, loc=loc, scale=scale, size=size)
+        if len(sliders_params) < 2:
+            raise ValueError("At least two parameters are required for sliders_params")
 
         return x, r, rv
 
