@@ -368,7 +368,7 @@ def p_explore():
 
     def get_code():
         # Распечатывает код в формате python
-        st.code(f"{generate_code}")
+        st.code({generate_code})
 
     def py_file_downloader(py_file_text):
         # Преобразование строк <-> байтов и создание ссылки, по которой будет
