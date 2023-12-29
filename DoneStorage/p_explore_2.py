@@ -98,11 +98,11 @@ def p_explore():
                         sliders_params.append(slider_i)
 
                 st.markdown("**SciPy официальная документация:**")
+                scipy_link = f'[{url_dic[select_distribution][1]}]({url_dic[select_distribution][0]})'
                 st.info(f"""
-                            Подробнее о: 
-                            [**{url_dic[select_distribution][1]}**]\
-                                ({url_dic[select_distribution][0]})
-                            """)
+                        Подробнее о: 
+                        {scipy_link}
+                        """)
 
                 return sliders_params
 
