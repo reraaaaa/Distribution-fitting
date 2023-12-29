@@ -23,22 +23,14 @@ def p_explore():
 
     doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = dictionaries.values()
 
-    def make_expanders(expander_name, sidebar=True):
-        """
-        Настройка расширителей, которые содержат набор опций
-        :param sidebar:
-        :param expander_name: вложение
-        :return: Расширение
-        """
-        if sidebar:
-            try:
-                return st.sidebar.expander(expander_name)
-            except:
-                return st.sidebar.beta_expander(expander_name)
+    def make_expanders(expander_name):
+        try:
+            return st.sidebar.expander(expander_name)
+        except:
+            return st.sidebar.beta_expander(expander_name)
 
     def create_slider(param, parameter_value, step_value):
-        """ Создает ползунок с заданным параметром и значением шага. """
-        slider_i = st.slider('Значение по умолчанию: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
+        slider_i = st.slider(f'Значение по умолчанию: {param} = {parameter_value}',
                              min_value=0.01,
                              value=float("{:.2f}".format(parameter_value)),
                              max_value=10.00,
@@ -46,31 +38,18 @@ def p_explore():
         return slider_i
 
     def create_manual_input(param, parameter_value):
-        """ Создает поле ввода для ручного ввода значения параметра. """
-        manual = float(st.text_input('Значение по умолчанию: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
+        manual = float(st.text_input(f'Значение по умолчанию: {param} = {parameter_value}',
                                      float("{:.2f}".format(parameter_value))))
         return manual
 
     st.sidebar.subheader("Исследовать")
 
     with make_expanders("Выбрать распределение"):
-        # функция имен
-        display = s.get_distribution_names()
-        # Создать виджет окна выбора, содержащий все функции SciPy
-        select_distribution = st.selectbox('Нажмите ниже (или введите), чтобы выбрать распределение', display)
+        select_distribution = st.selectbox('Нажмите ниже (или введите), чтобы выбрать распределение',
+                                           s.get_distribution_names())
         st.markdown("**Параметры**")
 
         def obtain_functional_data():
-            """
-            Эта функция создаст ползунки (или поля ввода) для каждого
-            доступного параметра выбранного распределения. Ползунки будут запускаться
-            со значением параметра по умолчанию, полученным из библиотеки SciPy.
-            Дополнительные параметры включают ползунки с меньшим интервалом шага или поля ввода,
-            если пользователи хотят вручную указать значения параметров.
-            """
-            # parameters_dic:
-            # Подробности смотрите во вспомогательной функции; пример вывода:
-            # 'alpha': {'a': '3.57', 'loc': '0.00', 'scale': '1.00'},
             advanced_mode = st.checkbox("Нажмите, чтобы настроить параметры", value=False)
             vary_parameters_mode = 'Интервал шага ползунка: 0.10'
             if advanced_mode:
@@ -82,7 +61,7 @@ def p_explore():
             if select_distribution in parameters_dic.keys():
                 sliders_params = []
                 for i, param in enumerate(parameters_dic[f'{select_distribution}']):
-                    parameter_value = float(parameters_dic.get(f'{select_distribution[i]}').get(param))
+                    parameter_value = float(parameters_dic.get(f'{select_distribution}').get(param))
 
                     try:
                         if vary_parameters_mode == 'Интервал шага ползунка: 0.10':
@@ -98,14 +77,14 @@ def p_explore():
                         slider_i = create_slider(param, parameter_value, 0.10)
                         sliders_params.append(slider_i)
 
-                st.markdown("**SciPy официальная документация:**")
-                scipy_link = f'[{url_dic[select_distribution][1]}]({url_dic[select_distribution][0]})'
-                st.info(f"""
-                        Подробнее о: 
-                        {scipy_link}
-                        """)
+                    st.markdown("**SciPy официальная документация:**")
+                    scipy_link = f'[{url_dic[select_distribution][1]}]({url_dic[select_distribution][0]})'
+                    st.info(f"""
+                                Подробнее о: 
+                                {scipy_link}
+                                """)
 
-                return sliders_params
+                    return sliders_params
 
         sliders_params = obtain_functional_data()
 
@@ -114,15 +93,6 @@ def p_explore():
         st.markdown(f"<h1 style='text-align: center;'>{fullname_dic[select_distribution]}</h1>", unsafe_allow_html=True)
 
     def get_multi_parameters(select_distribution, *c_params):
-        """
-        Эта функция принимает несколько аргументов, которые будут значениями параметров функции.
-        Текущие scipy-функции имеют от 2 до 6 параметров, два из которых всегда одинаковы: loc и scale.
-        :param select_distribution: Name of the distribution
-        :param c_params: Список параметров функции распределения
-        :return x: массив float64 - Генерируются равномерно расположенные числа
-        :return r: массив float64 - Сгенерированные случайные числа с использованием выбранного распределения.
-        :return rv: Frozen распределение
-        """
         size = 400
         dist = getattr(stats, select_distribution)
 
