@@ -172,7 +172,7 @@ def p_explore():
         # Та же функциональность, что и для PDF выше
         select_cdf, select_cdf_shine = st.columns(2)
         with select_cdf:
-            select_cdf = st.checkbox('CDF', value=True)
+            select_cdf = st.checkbox('CDF', value=False)
             if select_cdf == False:
                 select_cdf_shine = st.empty()
             else:
@@ -184,7 +184,7 @@ def p_explore():
             select_mark_P = st.empty()
             x_cdf = st.empty()
         else:
-            select_mark_P = st.checkbox('P(X<=x)', value=True)
+            select_mark_P = st.checkbox('P(X<=x)', value=False)
             if select_mark_P:
                 x_cdf = st.slider('Установите значение x, чтобы получить: (x, P(X<=x))',
                                   min_value=round(min(r1), 2),

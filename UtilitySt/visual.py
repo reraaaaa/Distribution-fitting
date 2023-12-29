@@ -263,8 +263,10 @@ class Figure(object):
 
     def set_legend(self, ax):
         legend = ax.legend(bbox_to_anchor=(0, 1.02, 1, 0.2),
-                           loc="lower left", mode="expand",
-                           borderaxespad=0, ncol=3)
+                           loc="lower left",
+                           mode="expand",
+                           borderaxespad=0,
+                           ncol=3)
         legend.get_frame().set_edgecolor("#525252")
 
     def figure_display_control(self):
@@ -290,8 +292,7 @@ class Figure(object):
             self.set_legend(ax)
         if not any([self.select_cdf, self.select_pdf, self.select_hist, self.select_boxplot, self.select_sf]):
             fig, ax = self.setup_figure('single')
-            ax.text(0.1, 0.5, 'Tabula rasa',
-                    va='center', fontsize=20)
+            ax.text(0.1, 0.5, 'Tabula rasa', va='center', fontsize=20)
             ax.spines['left'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.set_yticklabels([])
