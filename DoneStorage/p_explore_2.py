@@ -327,16 +327,18 @@ def p_explore():
             names = []
             ps = []
             distribution_dict = s.get_dictionaries_stat().get(select_distribution)
-            if distribution_dict is not None:
-                param_names = distribution_dict.get('shapes')
-                if param_names is not None:
-                    param_names = param_names.split(', ')
-                    for i, param in enumerate(sliders_params[0:-2]):
-                        name = f'{param_names[i]}'
-                        p = f'{param_names[i]}={param}'
+            if distribution_dict is None:
+                raise KeyError(f"{select_distribution} not found in the returned dictionary.")
 
-                        names.append(name)
-                        ps.append(p)
+            param_names = distribution_dict.get('shapes')
+            if param_names is not None:
+                param_names = param_names.split(', ')
+                for i, param in enumerate(sliders_params[0:-2]):
+                    name = f'{param_names[i]}'
+                    p = f'{param_names[i]}={param}'
+
+                    names.append(name)
+                    ps.append(p)
 
         return scale, loc, names, ps
 
