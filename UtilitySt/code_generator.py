@@ -34,7 +34,7 @@ class CodeGenerator(object):
         {self.loc}
         {self.a}              
         
-        # Generate evenly spaced numbers over a specified interval
+        # Генерировать равномерно числа в течение указанного интервала
         size = 400
         x = np.linspace({self.select_distribution}.ppf(0.001, {self.name} loc=loc, scale=scale ), 
                         {self.select_distribution}.ppf(0.999, {self.name} loc=loc, scale=scale ),
