@@ -373,20 +373,16 @@ def p_explore():
     def py_file_downloader(py_file_text):
         # Преобразование строк <-> байтов и создание ссылки, по которой будет
         # загружаться сгенерированный скрипт Python.
-
         # Добавить метку времени к имени сохраненного файла
         time_stamp = time.strftime("%Y%m%d_%H%M%S")
-
         # Base64 позаботится о переносе информации в данные.
         b64 = base64.b64encode(py_file_text.encode()).decode()
-
         # Сохраненный файл будет иметь имя дистрибутива и отметку времени
         code_file = f"{select_distribution}_{time_stamp}.py"
         st.markdown(f'** Скачать файл Python **: \
                     <a href="data:file/txt;base64,{b64}" \
                         download="{code_file}">Кликните сюда</a>',
                     unsafe_allow_html=True)
-
     # Нажмите кнопку, чтобы получить код Python и загрузить опцию гиперссылки.
     if export_code:
         get_code()
