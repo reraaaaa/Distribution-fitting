@@ -314,16 +314,12 @@ def p_explore():
         df_generate_statistics(r1)
 
     # Generate Python code
-
-    def how_many_params():
-        # Извлечь значения параметров, выбранные пользователем. Для
-        # распределения, содержащего только масштаб / локацию.
+    def how_many_params(sliders_params, s, select_distribution):
         if len(sliders_params) == 2:
             names = ""
             ps = ""
             scale = f'scale={sliders_params[-1]}'
             loc = f'loc={sliders_params[-2]}'
-
             return scale, loc, names, ps
 
         else:
@@ -342,8 +338,8 @@ def p_explore():
 
         return scale, loc, names, ps
 
-    # Получить вывод
-    scale, loc, name, p = how_many_params()
+    # Get output
+    scale, loc, name, p = how_many_params(sliders_params, s, select_distribution)
 
     # Извлеченный p имеет вид: ['a=4.3', 'b=4.0'], поэтому нужно удалить [',']
     a = str([i for i in p]).strip(" [] ").strip("'").replace("'", '').replace(", ", '\n')
