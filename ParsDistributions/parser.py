@@ -1,9 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+Created on 29/12/2023
+Aauthor: D-one
+"""
 from bs4 import BeautifulSoup
 import requests
 from scipy import stats
 import pandas as pd
-
-import ParsDistributions
 
 
 class DistributionParser(object):
@@ -202,15 +205,3 @@ class DistributionParser(object):
 
     def get_dictionaries(self):
         return self.dictionaries
-
-
-s = DistributionParser(type_rv='continuous')
-ss = s.get_distribution_names()
-pp = s.get_distribution_parameters()
-
-parse_params = stats._distr_params.distcont
-for d in ss:
-    dist = getattr(stats, d)
-    print(dist.name, dist.shapes)
-
-print(pp)
