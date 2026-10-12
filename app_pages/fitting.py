@@ -10,9 +10,9 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from UtilitySt import FitCodeGenerator, data_figure, fit_figure, fitting, qq_figure
+from UtilitySt import FitCodeGenerator, data_figure, fit_figure, fitting, qq_figure, risk
 
-from .calculator import show_calculator
+from .calculator import TAILS, show_calculator
 from .explore import load_distributions
 
 EXAMPLE_SOURCE = 'Пример данных'
@@ -94,8 +94,9 @@ def show_comparison(results):
     st.caption(
         'Таблица отсортирована по AIC: чем меньше, тем лучше; критерий штрафует за лишние параметры. '
         'ΔAIC - отставание от лучшего: при ΔAIC меньше 2 модели практически неразличимы, больше 10 - явно хуже. '
-        'p-значение критерия Колмогорова - Смирнова завышено, потому что параметры оценены по тем же данным; '
-        'малое значение говорит против распределения, а большое ничего не доказывает. '
+        'KS и AD - статистики Колмогорова - Смирнова и Андерсона - Дарлинга: расхождение между данными '
+        'и подобранным распределением, меньше - лучше; AD сильнее реагирует на хвосты. '
+        'p-значения для них считаются на вкладке «Проверка согласия». '
         'SSE зависит от разбиения гистограммы и приведён для справки. '
         'На малых выборках (десятки наблюдений) разница в AIC в несколько единиц ненадёжна. '
         'Лучшее из подобранных - не обязательно верное: выбор модели остаётся за вами.'
@@ -122,6 +123,95 @@ def show_figures(best, chosen, sample, density, edges, top_n, plot_mode):
                'Уход точек от диагонали по краям показывает, что хвосты у данных тяжелее или легче.')
 
 
+@st.cache_data(show_spinner='Моделирование для проверки согласия...', max_entries=200)
+def cached_goodness_of_fit(result, sample, fix_loc, n_simulations):
+    return fitting.goodness_of_fit(result, sample, fix_loc=fix_loc, n_simulations=n_simulations)
+
+
+@st.cache_data(show_spinner='Бутстреп параметров...', max_entries=200)
+def cached_bootstrap(result, sample, fix_loc, n_resamples):
+    return fitting.bootstrap_parameters(result, sample, fix_loc=fix_loc, n_resamples=n_resamples)
+
+
+def requested(key, label):
+    """
+    Кнопка тяжелого расчета. Нажатие запоминается для этого набора данных и настроек, чтобы результат
+    не исчезал при следующем действии на странице.
+    """
+    if st.button(label, key=f'{key}:button'):
+        st.session_state[key] = True
+    return st.session_state.get(key, False)
+
+
+def show_goodness_of_fit(chosen, sample, fix_loc, signature):
+    """
+    Вкладка «Проверка согласия»: p-значения критериев KS и AD методом Монте-Карло.
+    """
+    st.markdown(f'##### Согласуются ли данные с распределением {chosen.name}?')
+    st.caption(
+        'Табличные p-значения здесь неприменимы: они предполагают, что параметры известны заранее, '
+        'а мы оценили их по тем же данным, и таблицы дают завышенные значения. Поэтому распределение статистик '
+        'получаем моделированием: из подобранного распределения генерируются выборки того же объёма, '
+        'на каждой параметры оцениваются заново.'
+    )
+    n_simulations = st.select_slider('Число модельных выборок', options=(100, 200, 500), value=200,
+                                     key='gof:simulations')
+    if not requested(f'gof:{signature}:{chosen.name}:{n_simulations}', 'Рассчитать p-значения'):
+        st.info('Расчёт занимает от секунд до минут: распределение подбирается на каждой модельной выборке.')
+        return
+    try:
+        result = cached_goodness_of_fit(chosen, sample, fix_loc, n_simulations)
+    except fitting.DataError as e:
+        st.warning(f'Проверку выполнить не удалось: {e}.')
+        return
+    ks_column, ad_column = st.columns(2)
+    ks_column.metric('Колмогоров - Смирнов: p-значение', f'{result.ks_pvalue:.3f}',
+                     help=f'Статистика {result.ks_statistic:.4f}. Чувствителен к расхождению в середине.')
+    ad_column.metric('Андерсон - Дарлинг: p-значение', f'{result.ad_pvalue:.3f}',
+                     help=f'Статистика {result.ad_statistic:.4f}. Чувствителен к расхождению в хвостах.')
+    smallest = min(result.ks_pvalue, result.ad_pvalue)
+    if smallest < 0.05:
+        st.warning('p-значение меньше 0.05: данные плохо согласуются с этим распределением. '
+                   'Для мер риска важнее критерий Андерсона - Дарлинга: он проверяет хвосты.')
+    else:
+        st.success('Оба p-значения не меньше 0.05: данные не противоречат этому распределению. '
+                   'Это не доказательство того, что оно верное: на малых выборках критерии слабо '
+                   'различают близкие модели.')
+    st.caption(f'Использовано модельных выборок: {result.simulations}. Наименьшее возможное p-значение при '
+               f'таком числе выборок - {1 / (result.simulations + 1):.3f}.')
+
+
+def show_intervals(chosen, sample, fix_loc, signature):
+    """
+    Вкладка «Интервалы параметров»: бутстреп-интервалы для параметров и для VaR.
+    """
+    st.markdown(f'##### Насколько точны оценки для {chosen.name}?')
+    st.caption(
+        'Точечная оценка выглядит одинаково убедительно на 30 наблюдениях и на 30 000. Доверительный интервал '
+        'показывает, насколько она изменилась бы на другой выборке того же объёма. Бутстреп: из данных '
+        'многократно берётся выборка с возвращением, и распределение подбирается заново.'
+    )
+    if chosen.note:
+        st.warning(f'У этой подгонки {chosen.note}. Интервалы для таких параметров огромны и мало что значат; '
+                   'смотрите на интервал для VaR или выберите более простое распределение.')
+    tail = TAILS[st.radio('VaR считать для', tuple(TAILS), key='ci:tail', horizontal=True)]
+    n_resamples = st.select_slider('Число повторных выборок', options=(100, 200, 500), value=200,
+                                   key='ci:resamples')
+    if not requested(f'ci:{signature}:{chosen.name}:{n_resamples}', 'Построить интервалы'):
+        st.info('Расчёт занимает от секунд до минут: распределение подбирается на каждой повторной выборке.')
+        return
+    try:
+        replicates = cached_bootstrap(chosen, sample, fix_loc, n_resamples)
+    except fitting.DataError as e:
+        st.warning(f'Интервалы построить не удалось: {e}.')
+        return
+    quantities = {f'VaR {level:.1%}': (lambda rv, level=level: risk.value_at_risk(rv, level, tail))
+                  for level in risk.RISK_LEVELS}
+    st.dataframe(fitting.interval_table(chosen, replicates, quantities))
+    st.caption(f'Процентильные 95%-интервалы по {len(replicates)} повторным выборкам. Широкий интервал означает, '
+               'что данных мало, чтобы надёжно оценить эту величину; для VaR высокого уровня это обычное дело.')
+
+
 def show_export(results, best, sample, fix_loc):
     """
     Вкладка «Экспорт»: таблица, данные и скрипт, повторяющий подгонку лучшего распределения.
@@ -143,7 +233,7 @@ def show_export(results, best, sample, fix_loc):
     st.code(code)
 
 
-def show_results(results, sample, density, edges, top_n, plot_mode, fix_loc, distributions):
+def show_results(results, sample, density, edges, top_n, plot_mode, fix_loc, distributions, signature):
     best = fitting.ranked(results)
     if not best:
         st.warning('Ни одно из выбранных распределений подобрать не удалось.')
@@ -151,17 +241,23 @@ def show_results(results, sample, density, edges, top_n, plot_mode, fix_loc, dis
         return
 
     name = st.selectbox('Распределение для подробного анализа', [result.name for result in best],
-                        help='Используется на вкладках «Графики» и «Калькулятор». По умолчанию - лучшее по AIC.')
+                        help='Используется на всех вкладках, кроме «Сравнения» и «Экспорта». '
+                             'По умолчанию - лучшее по AIC.')
     chosen = next(result for result in best if result.name == name)
     info = distributions[name]
     parameters = ', '.join(f'{param} = {value:.4g}' for param, value in chosen.parameters.items())
     st.info(f'**{info.fullname}**: {parameters}. [Документация SciPy]({info.url})')
 
-    comparison, figures, calculator, export = st.tabs(['Сравнение', 'Графики', 'Калькулятор', 'Экспорт'])
+    comparison, figures, goodness, intervals, calculator, export = st.tabs(
+        ['Сравнение', 'Графики', 'Проверка согласия', 'Интервалы параметров', 'Калькулятор', 'Экспорт'])
     with comparison:
         show_comparison(results)
     with figures:
         show_figures(best, chosen, sample, density, edges, top_n, plot_mode)
+    with goodness:
+        show_goodness_of_fit(chosen, sample, fix_loc, signature)
+    with intervals:
+        show_intervals(chosen, sample, fix_loc, signature)
     with calculator:
         st.caption(f'Расчёты для подобранного распределения {name}.')
         show_calculator(chosen.frozen(), np.linspace(edges[0], edges[-1], 800), plot_mode, key=f'fit:{name}')
@@ -238,6 +334,6 @@ def p_fitting():
         return
 
     results = run_fits(names, sample, fix_loc)
-    show_results(results, sample, density, edges, top_n, plot_mode, fix_loc, distributions)
+    show_results(results, sample, density, edges, top_n, plot_mode, fix_loc, distributions, signature[0])
     with st.expander('Описательная статистика данных'):
         st.dataframe(fitting.data_statistics(data))

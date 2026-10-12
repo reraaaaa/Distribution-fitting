@@ -57,7 +57,7 @@ def test_quality_measures_are_consistent():
     assert result.n_free == 2
     assert result.aic == pytest.approx(2 * 2 - 2 * log_likelihood)
     assert result.bic == pytest.approx(2 * np.log(500) - 2 * log_likelihood)
-    assert 0 <= result.ks_statistic <= 1 and 0 <= result.ks_pvalue <= 1
+    assert 0 <= result.ks_statistic <= 1 and result.ad_statistic > 0
 
 
 def test_fixed_loc_is_not_counted_as_estimated():
@@ -287,7 +287,9 @@ def test_page_fits_the_example_data():
     assert table['Распределение'].iloc[0] == fitting.EXAMPLE_DISTRIBUTION
     assert table[table['Распределение'] == 'norm']['ΔAIC'].iloc[0] > 10
     assert len(table) >= 8
-    assert [tab.label for tab in at.tabs] == ['Сравнение', 'Графики', 'Калькулятор', 'Экспорт']
+    assert [tab.label for tab in at.tabs] == ['Сравнение', 'Графики', 'Проверка согласия', 'Интервалы параметров',
+                                              'Калькулятор', 'Экспорт']
+    assert 'KS p-значение' not in table.columns and {'KS', 'AD'} <= set(table.columns)
     assert [button.label for button in at.download_button] == ['Таблица результатов (CSV)', 'Данные (data.csv)',
                                                                'Скрипт Python']
     assert 'stats.t.fit(data)' in at.code[0].value
@@ -347,3 +349,77 @@ def test_page_handles_all_distributions_on_small_data():
     assert len(table) > 60
     # настоящая модель неотличима от лучшей: никакой "победитель" не обгоняет ее заметно
     assert table[table['Распределение'] == fitting.EXAMPLE_DISTRIBUTION]['ΔAIC'].iloc[0] < 2
+
+
+# ---------------- проверка согласия и интервалы
+
+def test_anderson_darling_matches_its_integral_definition():
+    """A2 = n * интеграл (F_n(u) - u)^2 / (u (1 - u)) du по [0, 1]; считаем его напрямую по кускам."""
+    from scipy import integrate
+
+    data = stats.uniform().rvs(size=25, random_state=2)
+    points = np.concatenate([[0.0], np.sort(data), [1.0]])
+    total = 0.0
+    for i in range(len(points) - 1):
+        level = i / len(data)
+        piece, _ = integrate.quad(lambda u, level=level: (level - u) ** 2 / (u * (1 - u)), points[i], points[i + 1])
+        total += piece
+    assert fitting.anderson_darling(stats.uniform, (0, 1), data) == pytest.approx(len(data) * total, rel=1e-6)
+
+
+def test_monte_carlo_pvalue_accepts_the_truth_and_rejects_a_wrong_model():
+    data = fitting.example_data()
+    student = fitting.goodness_of_fit(fitting.fit_distribution('t', data), data, n_simulations=100)
+    normal = fitting.goodness_of_fit(fitting.fit_distribution('norm', data), data, n_simulations=100)
+    assert student.ad_pvalue > 0.05 and student.ks_pvalue > 0.05
+    # хвосты у доходностей тяжелее нормальных: критерий, чувствительный к хвостам, это видит
+    assert normal.ad_pvalue < 0.05
+
+
+def test_monte_carlo_pvalue_is_not_inflated():
+    """Под верной гипотезой p-значение должно быть равномерным: доля p < 0.2 близка к 0.2.
+    Табличное p-значение KS с оцененными параметрами дает эту долю около нуля."""
+    rng = np.random.default_rng(0)
+    below = table_below = 0
+    repeats = 60
+    for _ in range(repeats):
+        data = stats.norm(0, 1).rvs(size=100, random_state=rng)
+        result = fitting.fit_distribution('norm', data)
+        below += fitting.goodness_of_fit(result, data, n_simulations=60, seed=int(rng.integers(1e9))).ks_pvalue < 0.2
+        table_below += stats.kstest(data, stats.norm.cdf, args=tuple(result.parameters.values())).pvalue < 0.2
+    assert 0.07 < below / repeats < 0.38
+    assert table_below / repeats < 0.05
+
+
+def test_bootstrap_intervals_cover_the_truth():
+    from UtilitySt import risk
+
+    data = fitting.example_data()
+    result = fitting.fit_distribution('t', data)
+    replicates = fitting.bootstrap_parameters(result, data, n_resamples=120)
+    table = fitting.interval_table(result, replicates, {'VaR 99%': lambda rv: risk.value_at_risk(rv, 0.99)})
+    low, high = table.columns[1], table.columns[2]
+    for param, true_value in fitting.EXAMPLE_PARAMETERS.items():
+        assert table.loc[param, low] <= true_value <= table.loc[param, high], param
+    true_var = risk.value_at_risk(stats.t(*fitting.EXAMPLE_PARAMETERS.values()), 0.99)
+    assert table.loc['VaR 99%', low] <= true_var <= table.loc['VaR 99%', high]
+    assert (table[low] <= table['Оценка']).all() and (table['Оценка'] <= table[high]).all()
+
+
+def test_page_runs_goodness_of_fit_and_intervals_on_request():
+    at = AppTest.from_function(fitting_page, default_timeout=300).run()
+    widget(at.button, 'Подобрать').click().run()
+    # тяжелые расчеты не запускаются сами
+    assert not [m for m in at.metric if 'p-значение' in m.label]
+
+    widget(at.button, 'Рассчитать p-значения').click().run()
+    assert not at.exception
+    assert float(widget(at.metric, 'Андерсон - Дарлинг: p-значение').value) > 0.05
+
+    widget(at.button, 'Построить интервалы').click().run()
+    assert not at.exception
+    intervals = [frame.value for frame in at.dataframe if 'Оценка' in frame.value.columns][0]
+    assert {'df', 'loc', 'scale', 'VaR 99.0%'} <= set(intervals.index)
+    # результаты не пропадают при следующем действии
+    widget(at.radio, 'Режим фигуры').set_value('Light Mode').run()
+    assert [m for m in at.metric if 'p-значение' in m.label]

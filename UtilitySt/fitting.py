@@ -43,7 +43,9 @@ class FitResult:
     :param n_free: число оцененных параметров (зафиксированный loc не считается)
     :param log_likelihood: логарифм правдоподобия в точке оценки
     :param aic, bic: информационные критерии, меньше - лучше
-    :param ks_statistic, ks_pvalue: критерий Колмогорова - Смирнова; p-значение завышено,
+    :param ks_statistic: статистика Колмогорова - Смирнова: наибольшее расхождение функций распределения
+    :param ad_statistic: статистика Андерсона - Дарлинга: то же расхождение с упором на хвосты.
+           p-значения для них считает goodness_of_fit: табличные p-значения здесь неприменимы,
            потому что параметры оценены по тем же данным
     :param sse: сумма квадратов отклонений плотности от гистограммы данных
     :param skipped: причина, по которой распределение не подобрано ('' если подобрано)
@@ -56,7 +58,7 @@ class FitResult:
     aic: float = math.nan
     bic: float = math.nan
     ks_statistic: float = math.nan
-    ks_pvalue: float = math.nan
+    ad_statistic: float = math.nan
     sse: float = math.nan
     skipped: str = ''
     note: str = ''
@@ -311,6 +313,37 @@ def degeneracy_note(parameters, data):
     return ''
 
 
+def fit_parameters(dist, data, fix_loc=False):
+    """
+    Оценки максимального правдоподобия в порядке SciPy: параметры формы, loc, scale.
+    Оптимизатор SciPy стартует от loc = 0, scale = 1 и на данных в рублях или в долях процента
+    часто не сходится. Подбираем по стандартизованным данным и возвращаем сдвиг и масштаб обратно:
+    параметры формы от этого не зависят.
+    """
+    center = 0.0 if fix_loc else float(np.mean(data))
+    spread = float(np.std(data))
+    standardized = (data - center) / spread
+    *shapes, loc, scale = dist.fit(standardized, floc=0.0) if fix_loc else dist.fit(standardized)
+    estimates = (*shapes, loc * spread + center, scale * spread)
+    if not math.isfinite(float(np.sum(dist.logpdf(data, *estimates)))):
+        # у распределений с границей в минимуме данных (expon, pareto) обратный пересчет сдвига
+        # может на ошибку округления вынести крайнее наблюдение за носитель: подбираем напрямую
+        estimates = dist.fit(data, floc=0.0) if fix_loc else dist.fit(data)
+    return tuple(float(value) for value in estimates)
+
+
+def anderson_darling(dist, estimates, data):
+    """
+    Статистика Андерсона - Дарлинга: как и статистика Колмогорова - Смирнова, измеряет расхождение
+    эмпирической и подобранной функций распределения, но с весами, которые подчеркивают хвосты.
+    """
+    ordered = np.sort(data)
+    n = len(ordered)
+    cdf = np.clip(dist.cdf(ordered, *estimates), 1e-300, 1 - 1e-16)
+    i = np.arange(1, n + 1)
+    return float(-n - np.sum((2 * i - 1) * (np.log(cdf) + np.log1p(-cdf[::-1]))) / n)
+
+
 def fit_distribution(name, data, fix_loc=False, time_limit=TIME_LIMIT):
     """
     Подбирает параметры одного распределения методом максимального правдоподобия и считает показатели качества.
@@ -321,32 +354,18 @@ def fit_distribution(name, data, fix_loc=False, time_limit=TIME_LIMIT):
     """
     dist = getattr(stats, name)
     n = len(data)
-    # Оптимизатор SciPy стартует от loc = 0, scale = 1 и на данных в рублях или в долях процента
-    # часто не сходится. Подбираем по стандартизованным данным и возвращаем сдвиг и масштаб обратно:
-    # параметры формы от этого не зависят.
-    center = 0.0 if fix_loc else float(np.mean(data))
-    spread = float(np.std(data))
-    standardized = (data - center) / spread
     with warnings.catch_warnings(), np.errstate(all='ignore'):
         warnings.simplefilter('ignore')
         try:
-            estimate = estimated_fit_seconds(dist, standardized)
+            estimate = estimated_fit_seconds(dist, (data - np.mean(data)) / np.std(data))
             if estimate > time_limit:
                 return FitResult(name, skipped='плотность считается слишком медленно для подгонки на этих данных')
 
-            *shapes, loc, scale = dist.fit(standardized, floc=0.0) if fix_loc else dist.fit(standardized)
-            estimates = (*shapes, loc * spread + center, scale * spread)
+            estimates = fit_parameters(dist, data, fix_loc)
             shape_names = [sh.strip() for sh in dist.shapes.split(',')] if dist.shapes else []
-            parameters = dict(zip([*shape_names, 'loc', 'scale'], (float(value) for value in estimates),
-                                  strict=True))
+            parameters = dict(zip([*shape_names, 'loc', 'scale'], estimates, strict=True))
 
             log_likelihood = float(np.sum(dist.logpdf(data, *estimates)))
-            if not math.isfinite(log_likelihood):
-                # у распределений с границей в минимуме данных (expon, pareto) обратный пересчет сдвига
-                # может на ошибку округления вынести крайнее наблюдение за носитель: подбираем напрямую
-                estimates = dist.fit(data, floc=0.0) if fix_loc else dist.fit(data)
-                parameters = dict(zip(parameters, (float(value) for value in estimates), strict=True))
-                log_likelihood = float(np.sum(dist.logpdf(data, *estimates)))
             if not math.isfinite(log_likelihood):
                 low, high = dist.support(*estimates)
                 if data.min() < low or data.max() > high:
@@ -364,10 +383,11 @@ def fit_distribution(name, data, fix_loc=False, time_limit=TIME_LIMIT):
                                                 f'(круговое распределение или численная ошибка SciPy)')
             n_free = len(estimates) - (1 if fix_loc else 0)
             ks = stats.kstest(data, dist.cdf, args=estimates)
+            ad = anderson_darling(dist, estimates, data)
             density, edges = histogram(data)
             centers = (edges[:-1] + edges[1:]) / 2
             sse = float(np.sum((dist.pdf(centers, *estimates) - density) ** 2))
-            if not (math.isfinite(sse) and math.isfinite(ks.statistic)):
+            if not (math.isfinite(sse) and math.isfinite(ks.statistic) and math.isfinite(ad)):
                 return FitResult(name, skipped='показатели качества подгонки не вычисляются')
         except Exception as e:
             return FitResult(name, skipped=f'подгонка не удалась: {type(e).__name__}: {e}'[:200])
@@ -375,7 +395,7 @@ def fit_distribution(name, data, fix_loc=False, time_limit=TIME_LIMIT):
     return FitResult(name=name, parameters=parameters, n_free=n_free, log_likelihood=log_likelihood,
                      aic=2 * n_free - 2 * log_likelihood,
                      bic=n_free * math.log(n) - 2 * log_likelihood,
-                     ks_statistic=float(ks.statistic), ks_pvalue=float(ks.pvalue), sse=sse,
+                     ks_statistic=float(ks.statistic), ad_statistic=ad, sse=sse,
                      note=degeneracy_note(parameters, data))
 
 
@@ -397,8 +417,8 @@ def results_table(results):
         'AIC': result.aic,
         'ΔAIC': result.aic - best[0].aic,
         'BIC': result.bic,
-        'KS p-значение': result.ks_pvalue,
-        'KS статистика': result.ks_statistic,
+        'KS': result.ks_statistic,
+        'AD': result.ad_statistic,
         'ln L': result.log_likelihood,
         'SSE': result.sse,
         'Оценено параметров': result.n_free,
@@ -420,3 +440,93 @@ def data_statistics(data):
                         index=['Наблюдений', 'Среднее', 'Стандартное отклонение', 'Асимметрия',
                                'Эксцесс (избыточный)', 'Минимум', 'Q1 (25%)', 'Медиана (50%)', 'Q3 (75%)',
                                'Максимум'])
+
+
+@dataclass(frozen=True)
+class GoodnessOfFit:
+    """
+    Проверка согласия методом Монте-Карло (параметрический бутстреп).
+    :param ks_pvalue, ad_pvalue: доля модельных выборок, у которых статистика не меньше наблюдаемой
+    :param simulations: сколько модельных выборок удалось подобрать
+    """
+    ks_statistic: float
+    ks_pvalue: float
+    ad_statistic: float
+    ad_pvalue: float
+    simulations: int
+
+
+def goodness_of_fit(result, data, fix_loc=False, n_simulations=200, seed=1):
+    """
+    Честные p-значения критериев Колмогорова - Смирнова и Андерсона - Дарлинга.
+    Табличные p-значения предполагают, что параметры известны заранее. Здесь параметры оценены по данным,
+    поэтому распределение статистики получаем моделированием: из подобранного распределения генерируем выборки
+    того же объема, на каждой заново оцениваем параметры и считаем статистику.
+    :param result: подобранный FitResult
+    """
+    dist = getattr(stats, result.name)
+    rv = result.frozen()
+    rng = np.random.default_rng(seed)
+    ks_exceed = ad_exceed = done = 0
+    with warnings.catch_warnings(), np.errstate(all='ignore'):
+        warnings.simplefilter('ignore')
+        for _ in range(n_simulations):
+            simulated = rv.rvs(size=len(data), random_state=rng)
+            try:
+                estimates = fit_parameters(dist, simulated, fix_loc)
+                ks = float(stats.kstest(simulated, dist.cdf, args=estimates).statistic)
+                ad = anderson_darling(dist, estimates, simulated)
+            except Exception:
+                continue
+            if not (math.isfinite(ks) and math.isfinite(ad)):
+                continue
+            done += 1
+            ks_exceed += ks >= result.ks_statistic
+            ad_exceed += ad >= result.ad_statistic
+    if done == 0:
+        raise DataError('ни на одной модельной выборке распределение подобрать не удалось')
+    return GoodnessOfFit(ks_statistic=result.ks_statistic, ks_pvalue=(ks_exceed + 1) / (done + 1),
+                         ad_statistic=result.ad_statistic, ad_pvalue=(ad_exceed + 1) / (done + 1),
+                         simulations=done)
+
+
+def bootstrap_parameters(result, data, fix_loc=False, n_resamples=200, seed=1):
+    """
+    Бутстреп оценок: параметры, заново подобранные на выборках с возвращением из данных.
+    :return: DataFrame, строка на повтор, столбцы - параметры распределения
+    """
+    dist = getattr(stats, result.name)
+    rng = np.random.default_rng(seed)
+    rows = []
+    with warnings.catch_warnings(), np.errstate(all='ignore'):
+        warnings.simplefilter('ignore')
+        for _ in range(n_resamples):
+            resample = rng.choice(data, size=len(data), replace=True)
+            try:
+                estimates = fit_parameters(dist, resample, fix_loc)
+            except Exception:
+                continue
+            if all(math.isfinite(value) for value in estimates):
+                rows.append(estimates)
+    if len(rows) < 20:
+        raise DataError('на повторных выборках распределение почти никогда не подбирается: интервалы не построить')
+    return pd.DataFrame(rows, columns=list(result.parameters))
+
+
+def interval_table(result, replicates, quantities=None, level=0.95):
+    """
+    Процентильные доверительные интервалы для параметров и производных величин.
+    :param replicates: результат bootstrap_parameters
+    :param quantities: {название: функция от frozen распределения}, например VaR
+    """
+    dist = getattr(stats, result.name)
+    low, high = (1 - level) / 2, 1 - (1 - level) / 2
+    rows = {param: (result.parameters[param], replicates[param].quantile(low), replicates[param].quantile(high))
+            for param in replicates.columns}
+    for label, function in (quantities or {}).items():
+        with np.errstate(all='ignore'):
+            values = np.array([function(dist(*row)) for row in replicates.itertuples(index=False)], dtype=float)
+        values = values[np.isfinite(values)]
+        rows[label] = (function(result.frozen()), np.quantile(values, low), np.quantile(values, high))
+    return pd.DataFrame.from_dict(rows, orient='index',
+                                  columns=['Оценка', f'Нижняя граница {level:.0%}', f'Верхняя граница {level:.0%}'])

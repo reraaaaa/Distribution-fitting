@@ -136,8 +136,8 @@ n_free = {n_free}
 print(f'ln L = {{log_likelihood:.3f}}')
 print(f'AIC = {{2 * n_free - 2 * log_likelihood:.3f}}')
 print(f'BIC = {{n_free * np.log(len(data)) - 2 * log_likelihood:.3f}}')
-# p-значение завышено: параметры оценены по тем же данным
-print(stats.kstest(data, rv.cdf))
+# Статистика Колмогорова - Смирнова. Ее табличное p-значение завышено: параметры оценены по тем же данным
+print(f'KS = {{stats.kstest(data, rv.cdf).statistic:.4f}}')
 
 # Гистограмма данных и подобранная плотность
 x = np.linspace(data.min(), data.max(), 800)
