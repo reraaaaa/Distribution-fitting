@@ -19,6 +19,8 @@ from UtilitySt import (
     DisplaySettings,
     Figure,
     InvalidParameters,
+    discrete_figure,
+    is_discrete,
     parameter_range,
     sample_distribution,
 )
@@ -132,6 +134,10 @@ def show_equation(info):
     как в нее входят loc и scale, а для нормального распределения - еще и привычную запись через μ и σ.
     """
     st.latex(info.equation)
+    if is_discrete(info.name):
+        st.caption('Это вероятность значения k в стандартной форме из документации SciPy: loc = 0. '
+                   'Со сдвигом вероятность значения k равна f(k - loc).')
+        return
     st.caption('Это стандартная форма из документации SciPy: loc = 0, scale = 1. '
                'Со сдвигом и масштабом плотность равна:')
     st.latex(LOC_SCALE_FORM)
@@ -167,19 +173,25 @@ def curve_controls(label, shine_key, value):
     return show, shine
 
 
-def display_controls(sample):
+def display_controls(sample, discrete=False):
     """
     Настройки отображения рисунка.
     :param sample: Sample или None, если с текущими параметрами распределение построить нельзя
+    :param discrete: дискретное распределение: вместо плотности вероятности значений (PMF),
+                     без эффекта Shine и блочной диаграммы
     :return: DisplaySettings
     """
     st.markdown("**Выберите режим фигуры:**")
     plot_mode = st.radio("Опции", ('Dark Mode', 'Light Mode'))
     st.markdown("**Что показать на рисунке?**")
-    histogram = st.checkbox('Гистограмма', value=True)
-
-    pdf, pdf_shine = curve_controls('PDF', 'pdf_shine', value=True)
-    cdf, cdf_shine = curve_controls('CDF', 'cdf_shine', value=False)
+    if discrete:
+        histogram = st.checkbox('Частоты в выборке', value=True)
+        pdf, pdf_shine = st.checkbox('PMF', value=True), False
+        cdf, cdf_shine = st.checkbox('CDF', value=False), False
+    else:
+        histogram = st.checkbox('Гистограмма', value=True)
+        pdf, pdf_shine = curve_controls('PDF', 'pdf_shine', value=True)
+        cdf, cdf_shine = curve_controls('CDF', 'cdf_shine', value=False)
 
     mark_p = False
     x_cdf = None
@@ -188,16 +200,25 @@ def display_controls(sample):
         if mark_p:
             # Границы и шаг - от диапазона графика: он бывает и 0.001, и 1e6
             x_min, x_max = float(sample.x[0]), float(sample.x[-1])
-            x_cdf = st.slider('Установите значение x, чтобы получить: (x, P(X<=x))',
-                              min_value=x_min,
-                              value=min(max(float(sample.rv.median()), x_min), x_max),
-                              max_value=x_max,
-                              step=(x_max - x_min) / 200,
-                              format='%.4g')
+            if discrete and x_min < x_max:
+                x_cdf = float(st.slider('Установите значение x, чтобы получить: (x, P(X<=x))',
+                                        min_value=int(x_min), value=int(sample.rv.median()), max_value=int(x_max),
+                                        step=1, key='discrete:x_cdf'))
+            elif discrete:
+                x_cdf = x_min
+            else:
+                x_cdf = st.slider('Установите значение x, чтобы получить: (x, P(X<=x))',
+                                  min_value=x_min,
+                                  value=min(max(float(sample.rv.median()), x_min), x_max),
+                                  max_value=x_max,
+                                  step=(x_max - x_min) / 200,
+                                  format='%.4g')
 
-    sf, sf_shine = curve_controls('SF', 'sf_shine', value=False)
-
-    boxplot = st.checkbox('Блочная диаграмма', value=True)
+    if discrete:
+        sf, sf_shine, boxplot = st.checkbox('SF', value=False), False, False
+    else:
+        sf, sf_shine = curve_controls('SF', 'sf_shine', value=False)
+        boxplot = st.checkbox('Блочная диаграмма', value=True)
 
     st.markdown("**Показать квартили распределения:**")
     quantiles = tuple(column.checkbox(f'Q{i}', value=False)
@@ -239,13 +260,16 @@ def statistics_table(name, parameters, seed):
                'Минимум', 'Q1 (25%)', 'Медиана (50%)', 'Q3 (75%)', 'Максимум'])
 
 
-def show_chart(settings, sample):
+def show_chart(settings, sample, discrete=False):
     figure = Figure(settings=settings, x=sample.x, r=sample.r, rv=sample.rv)
     try:
         if any(settings.sigmas) and not figure.sigma_is_defined():
             st.warning('У этого распределения с такими параметрами среднее или дисперсия не определены '
                        'либо бесконечны, поэтому область ±σ не показана.')
-        st.pyplot(figure.figure_display_control())
+        if discrete:
+            st.pyplot(discrete_figure(settings, sample.x, sample.r, sample.rv))
+        else:
+            st.pyplot(figure.figure_display_control())
     except NUMERIC_ERRORS as e:
         # выборка построилась, но плотность или моменты при таких параметрах SciPy вычислить не смог
         st.warning(f'SciPy не смог вычислить распределение с такими параметрами: {e}. '
@@ -269,8 +293,7 @@ def show_code(name, parameters, seed):
     """
     Показывает сгенерированный скрипт и кнопку, которая его скачивает.
     """
-    st.caption('Скрипт строит PDF, CDF, SF, гистограмму и блочную диаграмму для выбранных параметров '
-               'и ту же выборку, что показана в приложении.')
+    st.caption('Скрипт строит распределение с выбранными параметрами и ту же выборку, что показана в приложении.')
     code = CodeGenerator(distribution=name, parameters=parameters, seed=seed).get_generated_code()
     st.download_button('Скачать файл Python', data=code,
                        file_name=f'{name}_{time.strftime("%Y%m%d_%H%M%S")}.py',
@@ -278,9 +301,14 @@ def show_code(name, parameters, seed):
     st.code(code)
 
 
-def p_explore():
+def explore_page(type_rv):
+    """
+    Страница распределений одного вида.
+    :param type_rv: 'continuous' или 'discrete'
+    """
+    discrete = type_rv == 'discrete'
     try:
-        distributions = load_distributions('continuous')
+        distributions = load_distributions(type_rv)
     except Exception as e:
         st.error(f'Не удалось загрузить список распределений из документации SciPy: {e}')
         return
@@ -312,7 +340,7 @@ def p_explore():
         st.warning(f'С такими параметрами распределение построить нельзя: {e}. Измените значения параметров.')
 
     with st.sidebar.expander("Настройка отображения"):
-        settings = display_controls(sample)
+        settings = display_controls(sample, discrete)
     st.sidebar.caption('Адрес страницы содержит выбранное распределение и параметры: им можно поделиться.')
 
     if sample is None:
@@ -320,10 +348,18 @@ def p_explore():
 
     chart, calculator, statistics, code = st.tabs(['График', 'Калькулятор', 'Статистика', 'Код'])
     with chart:
-        show_chart(settings, sample)
+        show_chart(settings, sample, discrete)
     with calculator:
-        show_calculator(sample.rv, sample.x, settings.plot_mode, key=name)
+        show_calculator(sample.rv, sample.x, settings.plot_mode, key=name, discrete=discrete)
     with statistics:
         show_statistics(name, parameters, seed)
     with code:
         show_code(name, parameters, seed)
+
+
+def p_explore():
+    explore_page('continuous')
+
+
+def p_discrete():
+    explore_page('discrete')

@@ -42,7 +42,7 @@ def distribution_count():
 
 def p_introduction():
     st.title('Distribution Fitting')
-    st.markdown('#### Справочник непрерывных распределений и подбор распределения по данным')
+    st.markdown('#### Справочник распределений вероятностей и подбор распределения по данным')
     st.write('Изучайте распределения: двигайте параметры и смотрите, как меняются плотность, функция '
              'распределения и случайная выборка. Или загрузите свои данные и подберите распределение, '
              'которое описывает их лучше всего. Все расчёты выполняет SciPy.')
@@ -57,7 +57,7 @@ def p_introduction():
     engine.metric('Расчёты', f'SciPy {scipy.__version__}')
 
     st.subheader('Разделы')
-    explore, fitting = st.columns(2)
+    explore, discrete, fitting = st.columns(3)
     with explore.container(border=True):
         st.markdown('##### :material/monitoring: Непрерывные распределения')
         st.markdown(
@@ -69,6 +69,15 @@ def p_introduction():
             '- Экспорт готового скрипта Python и ссылка на выбранные параметры'
         )
         page_link('explore', 'Перейти', icon=':material/arrow_forward:')
+    with discrete.container(border=True):
+        st.markdown('##### :material/bar_chart: Дискретные распределения')
+        st.markdown(
+            '- Биномиальное, Пуассона, геометрическое и другие\n'
+            '- Вероятности значений и ступенчатая функция распределения\n'
+            '- Целочисленные параметры\n'
+            '- Те же калькулятор, статистика и экспорт скрипта'
+        )
+        page_link('discrete', 'Перейти', icon=':material/arrow_forward:')
     with fitting.container(border=True):
         st.markdown('##### :material/query_stats: Подбор закона распределения')
         st.markdown(

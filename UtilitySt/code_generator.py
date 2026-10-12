@@ -4,7 +4,7 @@ import matplotlib
 import numpy
 import scipy
 
-from .sampling import DEFAULT_SEED, SAMPLE_SIZE
+from .sampling import DEFAULT_SEED, SAMPLE_SIZE, integer_parameters, is_discrete
 
 TEMPLATE = """\
 # -*- coding: utf-8 -*-
@@ -81,6 +81,55 @@ plt.show()
 """
 
 
+DISCRETE_TEMPLATE = """\
+# -*- coding: utf-8 -*-
+# {timestamp}
+# ---
+
+import matplotlib.pyplot as plt  # v{matplotlib_version}
+import numpy as np  # v{numpy_version}
+from scipy.stats import {distribution}  # v{scipy_version}
+
+# Параметры распределения
+{assignments}
+
+# Зерно генератора: с ним выборка совпадает с той, что показана в приложении
+seed = {seed}
+size = {size}
+
+# Замороженное распределение
+rv = {distribution}({arguments})
+
+# Целые значения между квантилями 0.001 и 0.999
+x = np.arange(rv.ppf(0.001), rv.ppf(0.999) + 1)
+
+# Случайная выборка
+r = rv.rvs(size=size, random_state=seed)
+
+# Рисунок
+fig, ax = plt.subplots()
+
+# Частоты значений в выборке
+values, counts = np.unique(r, return_counts=True)
+ax.bar(values, counts / size, width=0.8, color='lightgrey', edgecolor='k', label='Выборка')
+
+# Вероятности значений (PMF), функция распределения (CDF) и функция выживания (SF)
+ax.vlines(x, 0, rv.pmf(x), color='#3182bd', lw=3, label='PMF')
+ax.step(x, rv.cdf(x), where='post', color='k', lw=1.5, label='CDF')
+ax.step(x, rv.sf(x), where='post', color='#df65b0', lw=1.5, label='SF')
+
+# Оформление рисунка
+ax.legend(bbox_to_anchor=(0, 1.1, 1, 0.2), loc="center", borderaxespad=0, ncol=4)
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.set_title('Распределение: {distribution}')
+ax.set_xlabel('X значение')
+ax.set_ylabel('Вероятность')
+
+plt.show()
+"""
+
+
 class CodeGenerator(object):
     """
     Генерирует самостоятельный скрипт Python, который строит выбранное распределение.
@@ -95,12 +144,22 @@ class CodeGenerator(object):
         self.seed = seed
 
     def get_generated_code(self):
-        *shape_names, loc, scale = self.parameters
+        discrete = is_discrete(self.distribution)
+        # у дискретных распределений нет scale: параметры формы, затем loc
+        common = ['loc'] if discrete else ['scale', 'loc']
+        shape_names = [name for name in self.parameters if name not in common]
+        integral = integer_parameters(self.distribution)
+
+        def literal(name):
+            value = self.parameters[name]
+            return str(int(value)) if name in integral else str(value)
+
         # сначала scale и loc, затем параметры формы по одному на строку
-        assignments = [f'{name}={self.parameters[name]}' for name in [scale, loc, *shape_names]]
+        assignments = [f'{name}={literal(name)}' for name in [*common, *shape_names]]
         # параметры формы позиционно, loc и scale по имени: "a, b, loc=loc, scale=scale"
-        arguments = [*shape_names, f'{loc}={loc}', f'{scale}={scale}']
-        return TEMPLATE.format(timestamp=time.strftime("%Y%m%d_%H%M%S"),
+        arguments = [*shape_names, *(f'{name}={name}' for name in reversed(common))]
+        template = DISCRETE_TEMPLATE if discrete else TEMPLATE
+        return template.format(timestamp=time.strftime("%Y%m%d_%H%M%S"),
                                matplotlib_version=matplotlib.__version__,
                                numpy_version=numpy.__version__,
                                scipy_version=scipy.__version__,

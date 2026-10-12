@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 
-from UtilitySt import NUMERIC_ERRORS, interval_figure, risk
+from UtilitySt import NUMERIC_ERRORS, discrete_interval_figure, interval_figure, risk
 
 TAILS = {
     'Доходность или прибыль: потери слева': risk.LEFT,
@@ -19,11 +19,12 @@ def number(value):
     return f'{value:.6g}'
 
 
-def show_calculator(rv, x, plot_mode, key):
+def show_calculator(rv, x, plot_mode, key, discrete=False):
     """
     :param rv: frozen распределение
     :param x: точки для графика плотности
     :param key: префикс ключей виджетов; у каждого распределения свой, чтобы значения не переносились
+    :param discrete: дискретное распределение: на графике вероятности значений, а не плотность
     """
     try:
         with np.errstate(all='ignore'):
@@ -40,7 +41,7 @@ def show_calculator(rv, x, plot_mode, key):
         st.warning('Верхняя граница интервала должна быть больше нижней.')
     else:
         result_column.metric('P(от < X ≤ до)', f'{risk.interval_probability(rv, low, high):.4f}')
-        st.pyplot(interval_figure(rv, x, low, high, plot_mode))
+        st.pyplot((discrete_interval_figure if discrete else interval_figure)(rv, x, low, high, plot_mode))
         plt.close('all')
 
     st.markdown('##### Квантиль и вероятность')

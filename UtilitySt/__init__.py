@@ -8,10 +8,21 @@ from .sampling import (
     InvalidParameters,
     ParameterRange,
     Sample,
+    integer_parameters,
+    is_discrete,
     parameter_range,
     sample_distribution,
 )
-from .visual import DisplaySettings, Figure, data_figure, fit_figure, interval_figure, qq_figure
+from .visual import (
+    DisplaySettings,
+    Figure,
+    data_figure,
+    discrete_figure,
+    discrete_interval_figure,
+    fit_figure,
+    interval_figure,
+    qq_figure,
+)
 
 __all__ = [
     "CodeGenerator",
@@ -24,9 +35,13 @@ __all__ = [
     "ParameterRange",
     "Sample",
     "data_figure",
+    "discrete_figure",
+    "discrete_interval_figure",
     "fit_figure",
     "fitting",
+    "integer_parameters",
     "interval_figure",
+    "is_discrete",
     "parameter_range",
     "qq_figure",
     "risk",

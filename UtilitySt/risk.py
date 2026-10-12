@@ -3,7 +3,7 @@ import math
 import warnings
 
 import numpy as np
-from scipy import integrate
+from scipy import integrate, stats
 
 # В каком хвосте распределения лежат потери
 LEFT = 'left'    # величина - доходность или прибыль: потери - это малые значения
@@ -55,6 +55,8 @@ def expected_shortfall(rv, level, tail=LEFT):
     alpha = 1 - level
     if not tail_mean_is_finite(rv, tail):
         return math.inf
+    if isinstance(rv.dist, stats.rv_discrete):
+        return _discrete_expected_shortfall(rv, level, tail)
     with warnings.catch_warnings(), np.errstate(all='ignore'):
         warnings.simplefilter('ignore', integrate.IntegrationWarning)
         if tail == LEFT:
@@ -62,3 +64,20 @@ def expected_shortfall(rv, level, tail=LEFT):
             return -integral / alpha
         integral, _ = integrate.quad(rv.ppf, level, 1, limit=200)
         return integral / alpha
+
+
+def _discrete_expected_shortfall(rv, level, tail):
+    """
+    Среднее квантильной функции по хвосту для дискретного распределения, точной суммой:
+    значения за квантилем входят целиком, сам квантиль - с остатком вероятности до 1 - level.
+    """
+    alpha = 1 - level
+    if tail == LEFT:
+        quantile = rv.ppf(alpha)
+        values = np.arange(rv.ppf(1e-12), quantile)
+        beyond = float(np.sum(values * rv.pmf(values)))
+        return -(beyond + quantile * (alpha - float(rv.cdf(quantile - 1)))) / alpha
+    quantile = rv.ppf(level)
+    values = np.arange(quantile + 1, rv.ppf(1 - 1e-12) + 1)
+    beyond = float(np.sum(values * rv.pmf(values)))
+    return (beyond + quantile * (alpha - float(rv.sf(quantile)))) / alpha

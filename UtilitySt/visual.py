@@ -429,3 +429,77 @@ def interval_figure(rv, x, low, high, plot_mode):
     ax.set_xlabel('X значение')
     ax.set_ylabel('Плотность')
     return fig
+
+
+def discrete_figure(settings, x, r, rv):
+    """
+    Рисунок дискретного распределения: вероятности значений столбиками, функция распределения ступеньками,
+    частоты значений в выборке.
+    """
+    colors = apply_plot_mode(settings.plot_mode)
+    fig, ax = plt.subplots(1, 1)
+    if not (settings.has_curves or any(settings.quantiles) or any(settings.sigmas)):
+        ax.text(0.1, 0.5, 'Tabula rasa', va='center', fontsize=20)
+        ax.set_axis_off()
+        return fig
+
+    with np.errstate(all='ignore'):
+        pmf = rv.pmf(x)
+        if settings.histogram:
+            values, counts = np.unique(r, return_counts=True)
+            ax.bar(values, counts / len(r), width=0.8, fill=False, edgecolor=colors['hist_edge_color'],
+                   linewidth=1, label='Выборка')
+        if settings.pdf:
+            ax.vlines(x, 0, pmf, color=colors['pdf_line_color'], lw=2, label='PMF')
+            ax.plot(x, pmf, linestyle='none', marker='o', markersize=4, color=colors['pdf_line_color'])
+        if settings.cdf:
+            ax.step(x, rv.cdf(x), where='post', color=colors['cdf_line_color'], lw=1, label='CDF')
+        if settings.sf:
+            ax.step(x, rv.sf(x), where='post', color='plum', lw=1, label='SF')
+        if settings.mark_p:
+            probability = rv.cdf(settings.x_cdf)
+            ax.plot([settings.x_cdf], [probability], marker='o', color=colors['cdf_line_color'])
+            ax.annotate(f'({settings.x_cdf:.0f}, {probability:.2f})', xy=(settings.x_cdf, probability),
+                        color=colors['cdf_line_color'])
+        quartiles = rv.ppf([0.25, 0.50, 0.75])
+        for idx, shown in enumerate(settings.quantiles, start=1):
+            if shown:
+                ax.axvline(quartiles[idx - 1], color=colors[f'quant{idx}_color'], linestyle=Figure.quantile_dashes,
+                           linewidth=2, label=f'Q{idx} = {quartiles[idx - 1]:.0f}', zorder=0)
+        mean, std = float(rv.mean()), float(rv.std())
+        if np.isfinite(mean) and np.isfinite(std):
+            for idx, shown in enumerate(settings.sigmas, start=1):
+                if shown:
+                    low, high = mean - idx * std, mean + idx * std
+                    # вероятность целых значений внутри интервала
+                    probability = rv.cdf(np.floor(high)) - rv.cdf(np.ceil(low) - 1)
+                    ax.axvspan(low, high, color=colors['pdf_line_color'], alpha=0.12,
+                               label=f'{idx}σ: P = {probability:.3f}')
+
+    density = settings.pdf or settings.histogram
+    probability = settings.cdf or settings.sf
+    ax.set_ylabel('Вероятность значения / накопленная вероятность' if density and probability
+                  else 'Накопленная вероятность' if probability else 'Вероятность значения')
+    ax.set_xlabel('X значение')
+    ax.set_ylim(bottom=0)
+    if ax.get_legend_handles_labels()[1]:
+        legend = ax.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left", mode="expand", borderaxespad=0,
+                           ncol=3)
+        legend.get_frame().set_edgecolor("#525252")
+    return fig
+
+
+def discrete_interval_figure(rv, x, low, high, plot_mode):
+    """
+    Вероятности значений с выделенными значениями low < X <= high.
+    """
+    colors = apply_plot_mode(plot_mode)
+    fig, ax = plt.subplots(1, 1, figsize=(6.4, 3.2))
+    pmf = rv.pmf(x)
+    inside = (x > low) & (x <= high)
+    ax.vlines(x[~inside], 0, pmf[~inside], color=colors['hist_edge_color'], lw=2)
+    ax.vlines(x[inside], 0, pmf[inside], color=colors['pdf_line_color'], lw=3)
+    ax.set_ylim(bottom=0)
+    ax.set_xlabel('X значение')
+    ax.set_ylabel('Вероятность значения')
+    return fig

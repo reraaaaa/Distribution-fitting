@@ -8,7 +8,7 @@ from pathlib import Path
 import scipy
 import streamlit as st
 
-from app_pages import navigation, p_explore, p_fitting, p_introduction
+from app_pages import navigation, p_discrete, p_explore, p_fitting, p_introduction
 
 IMAGES = Path(__file__).resolve().parent / "images"
 REPOSITORY = "https://github.com/reraaaaa/Distribution-fitting"
@@ -23,13 +23,14 @@ pages = {
     "introduction": st.Page(p_introduction, title="Главная", icon=":material/home:",
                             url_path="introduction", default=True),
     "explore": st.Page(p_explore, title="Непрерывные", icon=":material/monitoring:", url_path="explore"),
+    "discrete": st.Page(p_discrete, title="Дискретные", icon=":material/bar_chart:", url_path="discrete"),
     "fitting": st.Page(p_fitting, title="Подбор закона распределения", icon=":material/query_stats:",
                        url_path="fitting"),
 }
 navigation.register(**pages)
 page = st.navigation({
     "": [pages["introduction"]],
-    "Распределения": [pages["explore"]],
+    "Распределения": [pages["explore"], pages["discrete"]],
     "Данные": [pages["fitting"]],
 })
 page.run()
