@@ -60,8 +60,7 @@ def test_distribution_renders_and_exports_runnable_code(explore_app, monkeypatch
     widget(at.selectbox, SELECT_LABEL).select(distribution).run()
     assert_no_errors(at)
 
-    widget(at.button, 'Сгенерировать код Python').click().run()
-    assert_no_errors(at)
+    assert [tab.label for tab in at.tabs] == ['График', 'Калькулятор', 'Статистика', 'Код']
     assert len(at.code) == 1
     assert len(at.download_button) == 1
 
@@ -87,7 +86,6 @@ TOGGLE_STEPS = [
     ('1 sigma', lambda at: widget(at.checkbox, '1σ').check()),
     ('2 sigma', lambda at: widget(at.checkbox, '2σ').check()),
     ('3 sigma', lambda at: widget(at.checkbox, '3σ').check()),
-    ('statistics', lambda at: widget(at.checkbox, 'Да').check()),
     ('light mode', lambda at: widget(at.radio, 'Опции').set_value('Light Mode')),
     ('dark mode', lambda at: widget(at.radio, 'Опции').set_value('Dark Mode')),
     ('PDF shine off', lambda at: at.checkbox(key='pdf_shine').uncheck()),
@@ -141,7 +139,6 @@ def test_integer_parameter_slider_moves_without_crashing():
 
 def test_statistics_show_theory_next_to_the_sample():
     at = select(new_explore_app(), 'cauchy')
-    widget(at.checkbox, 'Да').check().run()
     assert_no_errors(at)
     table = at.dataframe[0].value
     assert list(table.columns) == ['Распределение', 'Выборка, n=400']
@@ -153,7 +150,6 @@ def test_statistics_show_theory_next_to_the_sample():
 
 def test_sample_is_stable_until_a_new_one_is_requested():
     at = select(new_explore_app(), 'norm')
-    widget(at.checkbox, 'Да').check().run()
     column = 'Выборка, n=400'
     first = at.dataframe[0].value[column].copy()
 
@@ -204,3 +200,67 @@ def test_normal_distribution_shows_the_familiar_formula():
     assert len(formulas) == 3
     assert any('sigma' in formula and 'mu' in formula for formula in formulas)
     assert any('loc' in formula and 'scale' in formula for formula in formulas)
+
+
+def metric(at, label):
+    return widget(at.metric, label).value
+
+
+def test_shared_link_restores_distribution_and_parameters():
+    at = AppTest.from_function(explore_page, default_timeout=300)
+    at.query_params['dist'] = 'gamma'
+    at.query_params['a'] = '4.5'
+    at.query_params['scale'] = '25'
+    at.run()
+    assert_no_errors(at)
+    assert widget(at.selectbox, SELECT_LABEL).value == 'gamma'
+    assert first_slider(at, ': a =').value == 4.5
+    # значение из ссылки вне обычного диапазона ползунка: диапазон расширяется, а не падает
+    assert first_slider(at, 'scale').value == 25.0
+    assert first_slider(at, 'loc').value == 0.0
+
+
+def test_page_address_follows_the_parameters():
+    at = select(new_explore_app(), 'norm')
+    first_slider(at, 'loc').set_value(-2.5).run()
+    assert at.query_params['dist'] == 'norm'
+    assert at.query_params['loc'] == '-2.5'
+    # параметры из ссылки на другое распределение не подставляются
+    select(at, 'gamma')
+    assert at.query_params['dist'] == 'gamma' and first_slider(at, 'loc').value == 0.0
+
+
+def test_broken_link_falls_back_to_defaults():
+    at = AppTest.from_function(explore_page, default_timeout=300)
+    at.query_params['dist'] = 'no_such_distribution'
+    at.query_params['a'] = 'abc'
+    at.run()
+    assert_no_errors(at)
+    at2 = AppTest.from_function(explore_page, default_timeout=300)
+    at2.query_params['dist'] = 'gamma'
+    at2.query_params['a'] = 'abc'
+    at2.run()
+    assert_no_errors(at2)
+    assert first_slider(at2, ': a =').value == 1.99
+
+
+def test_calculator_matches_scipy():
+    from scipy import stats
+
+    at = select(new_explore_app(), 'norm')
+    rv = stats.norm()
+    assert float(metric(at, 'P(от < X ≤ до)')) == pytest.approx(0.5, abs=1e-4)
+    assert float(metric(at, 'Квантиль: x, при котором P(X ≤ x) = p')) == pytest.approx(rv.ppf(0.95), rel=1e-5)
+    # доходность: потери слева, VaR и ES - положительные размеры потери
+    assert float(metric(at, 'VaR 99.0%')) == pytest.approx(-rv.ppf(0.01), rel=1e-5)
+    assert float(metric(at, 'Expected Shortfall 99.0%')) == pytest.approx(rv.pdf(rv.ppf(0.01)) / 0.01, rel=1e-5)
+
+    widget(at.select_slider, 'Уровень доверия').set_value(0.975).run()
+    assert float(metric(at, 'VaR 97.5%')) == pytest.approx(-rv.ppf(0.025), rel=1e-5)
+
+
+def test_expected_shortfall_is_undefined_without_a_tail_mean():
+    at = select(new_explore_app(), 'cauchy')
+    assert not at.exception
+    assert metric(at, 'Expected Shortfall 99.0%') == 'не определено'
+    assert float(metric(at, 'VaR 99.0%')) > 0

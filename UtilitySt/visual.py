@@ -410,3 +410,22 @@ def qq_figure(data, result, plot_mode):
     legend = ax.legend(loc='upper left')
     legend.get_frame().set_edgecolor("#525252")
     return fig
+
+
+def interval_figure(rv, x, low, high, plot_mode):
+    """
+    Плотность с закрашенной областью low < X <= high.
+    """
+    colors = apply_plot_mode(plot_mode)
+    fig, ax = plt.subplots(1, 1, figsize=(6.4, 3.2))
+    with np.errstate(all='ignore'):
+        density = rv.pdf(x)
+    ax.plot(x, density, color=colors['pdf_line_color'], lw=1.5)
+    inside = (x > low) & (x <= high)
+    ax.fill_between(x[inside], density[inside], 0, color=colors['pdf_line_color'], alpha=0.35)
+    finite = density[np.isfinite(density)]
+    if len(finite):
+        ax.set_ylim(0, 1.1 * finite.max())
+    ax.set_xlabel('X значение')
+    ax.set_ylabel('Плотность')
+    return fig

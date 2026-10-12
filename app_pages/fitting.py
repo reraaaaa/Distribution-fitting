@@ -12,6 +12,7 @@ import streamlit as st
 
 from UtilitySt import FitCodeGenerator, data_figure, fit_figure, fitting, qq_figure
 
+from .calculator import show_calculator
 from .explore import load_distributions
 
 EXAMPLE_SOURCE = 'Пример данных'
@@ -36,12 +37,15 @@ def load_values():
     source = st.radio('Источник данных', (EXAMPLE_SOURCE, FILE_SOURCE))
     if source == EXAMPLE_SOURCE:
         parameters = ', '.join(f'{param} = {value}' for param, value in fitting.EXAMPLE_PARAMETERS.items())
-        st.caption(f'500 случайных чисел из гамма-распределения ({parameters}).')
+        st.caption(f'Модельные дневные доходности: 750 случайных чисел из распределения Стьюдента ({parameters}). '
+                   'Хвосты у него тяжелее, чем у нормального.')
         return fitting.example_data()
 
     uploaded = st.file_uploader('Файл CSV или TXT', type=['csv', 'txt'],
                                 help='Один или несколько столбцов чисел. Разделитель столбцов определяется '
-                                     'автоматически, десятичным разделителем может быть точка или запятая.')
+                                     'автоматически, десятичным разделителем может быть точка или запятая. '
+                                     'Одиночная запятая считается десятичной: файл из двух столбцов целых чисел '
+                                     'сохраняйте с точкой с запятой или табуляцией между столбцами.')
     if uploaded is None:
         return None
     table = fitting.read_table(uploaded.getvalue())
@@ -82,51 +86,46 @@ def show_data(data, dropped, sample):
                    'будут вводить в заблуждение.')
 
 
-def show_results(results, sample, density, edges, top_n, plot_mode, distributions):
-    best = fitting.ranked(results)
+def show_comparison(results):
+    """
+    Вкладка «Сравнение»: таблица подобранных распределений и список неподобранных.
+    """
+    st.dataframe(fitting.results_table(results), hide_index=True)
+    st.caption(
+        'Таблица отсортирована по AIC: чем меньше, тем лучше; критерий штрафует за лишние параметры. '
+        'ΔAIC - отставание от лучшего: при ΔAIC меньше 2 модели практически неразличимы, больше 10 - явно хуже. '
+        'p-значение критерия Колмогорова - Смирнова завышено, потому что параметры оценены по тем же данным; '
+        'малое значение говорит против распределения, а большое ничего не доказывает. '
+        'SSE зависит от разбиения гистограммы и приведён для справки. '
+        'На малых выборках (десятки наблюдений) разница в AIC в несколько единиц ненадёжна. '
+        'Лучшее из подобранных - не обязательно верное: выбор модели остаётся за вами.'
+    )
     skipped = [result for result in results if not result.ok]
-
-    st.subheader('Результаты')
-    if not best:
-        st.warning('Ни одно из выбранных распределений подобрать не удалось.')
-    else:
-        st.dataframe(fitting.results_table(results), hide_index=True)
-        st.caption(
-            'Таблица отсортирована по AIC: чем меньше, тем лучше; критерий штрафует за лишние параметры. '
-            'ΔAIC - отставание от лучшего: при ΔAIC меньше 2 модели практически неразличимы, больше 10 - явно хуже. '
-            'p-значение критерия Колмогорова - Смирнова завышено, потому что параметры оценены по тем же данным; '
-            'малое значение говорит против распределения, а большое ничего не доказывает. '
-            'SSE зависит от разбиения гистограммы и приведён для справки. '
-            'Лучшее из подобранных - не обязательно верное: выбор модели остаётся за вами.'
-        )
     if skipped:
         with st.expander(f'Не подобрано: {len(skipped)}'):
             st.dataframe(pd.DataFrame({'Распределение': [result.name for result in skipped],
                                        'Причина': [result.skipped for result in skipped]}), hide_index=True)
-    if not best:
-        return
 
-    st.subheader('График')
+
+def show_figures(best, chosen, sample, density, edges, top_n, plot_mode):
+    """
+    Вкладка «Графики»: гистограмма с лучшими плотностями и Q-Q график выбранного распределения.
+    """
+    st.markdown(f'##### Данные и {min(top_n, len(best))} лучших по AIC')
     st.pyplot(fit_figure(density, edges, best[:top_n], plot_mode))
     plt.close('all')
 
-    st.subheader('Проверка в хвостах')
-    name = st.selectbox('Распределение для Q-Q графика', [result.name for result in best])
-    chosen = next(result for result in best if result.name == name)
+    st.markdown(f'##### Q-Q график: {chosen.name}')
     st.pyplot(qq_figure(sample, chosen, plot_mode))
     plt.close('all')
     st.caption('Точки на диагонали - распределение описывает данные и в центре, и в хвостах. '
                'Уход точек от диагонали по краям показывает, что хвосты у данных тяжелее или легче.')
-    info = distributions[name]
-    parameters = ', '.join(f'{param} = {value:.4g}' for param, value in chosen.parameters.items())
-    st.info(f'**{info.fullname}**: {parameters}. [Документация SciPy]({info.url})')
 
 
-def show_export(results, sample, fix_loc):
-    best = fitting.ranked(results)
-    if not best:
-        return
-    st.subheader('Экспорт')
+def show_export(results, best, sample, fix_loc):
+    """
+    Вкладка «Экспорт»: таблица, данные и скрипт, повторяющий подгонку лучшего распределения.
+    """
     stamp = time.strftime("%Y%m%d_%H%M%S")
     table, data_file, script = st.columns(3)
     table.download_button('Таблица результатов (CSV)',
@@ -139,9 +138,35 @@ def show_export(results, sample, fix_loc):
     code = FitCodeGenerator(best[0], fix_loc=fix_loc).get_generated_code()
     script.download_button('Скрипт Python', data=code, file_name=f'fit_{best[0].name}_{stamp}.py',
                            mime='text/x-python', on_click='ignore')
-    with st.expander(f'Скрипт для лучшего распределения ({best[0].name})'):
-        st.caption('Скрипт читает data.csv из той же папки и повторяет подгонку.')
-        st.code(code)
+    st.caption(f'Скрипт повторяет подгонку лучшего распределения ({best[0].name}): '
+               'читает data.csv из той же папки.')
+    st.code(code)
+
+
+def show_results(results, sample, density, edges, top_n, plot_mode, fix_loc, distributions):
+    best = fitting.ranked(results)
+    if not best:
+        st.warning('Ни одно из выбранных распределений подобрать не удалось.')
+        show_comparison(results)
+        return
+
+    name = st.selectbox('Распределение для подробного анализа', [result.name for result in best],
+                        help='Используется на вкладках «Графики» и «Калькулятор». По умолчанию - лучшее по AIC.')
+    chosen = next(result for result in best if result.name == name)
+    info = distributions[name]
+    parameters = ', '.join(f'{param} = {value:.4g}' for param, value in chosen.parameters.items())
+    st.info(f'**{info.fullname}**: {parameters}. [Документация SciPy]({info.url})')
+
+    comparison, figures, calculator, export = st.tabs(['Сравнение', 'Графики', 'Калькулятор', 'Экспорт'])
+    with comparison:
+        show_comparison(results)
+    with figures:
+        show_figures(best, chosen, sample, density, edges, top_n, plot_mode)
+    with calculator:
+        st.caption(f'Расчёты для подобранного распределения {name}.')
+        show_calculator(chosen.frozen(), np.linspace(edges[0], edges[-1], 800), plot_mode, key=f'fit:{name}')
+    with export:
+        show_export(results, best, sample, fix_loc)
 
 
 def p_fitting():
@@ -213,7 +238,6 @@ def p_fitting():
         return
 
     results = run_fits(names, sample, fix_loc)
-    show_results(results, sample, density, edges, top_n, plot_mode, distributions)
-    show_export(results, sample, fix_loc)
+    show_results(results, sample, density, edges, top_n, plot_mode, fix_loc, distributions)
     with st.expander('Описательная статистика данных'):
         st.dataframe(fitting.data_statistics(data))

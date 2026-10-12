@@ -3,6 +3,7 @@
 Created on 03/01/2022
 Aauthor: D-one
 """
+import math
 import time
 
 import matplotlib.pyplot as plt
@@ -21,6 +22,8 @@ from UtilitySt import (
     parameter_range,
     sample_distribution,
 )
+
+from .calculator import show_calculator
 
 # Режимы ввода параметров: подпись в интерфейсе -> шаг ползунка (None - ручной ввод)
 PARAMETER_MODES = {
@@ -64,22 +67,41 @@ def cached_sample(name, parameters, seed):
     return sample_distribution(name, parameters, seed=seed)
 
 
-def parameter_slider(name, param, default, step):
+def shared_value(info, param):
     """
-    Ползунок параметра. Границы - область определения параметра из SciPy вокруг значения по умолчанию.
+    Начальное значение параметра: из ссылки, если она открыта для этого распределения, иначе по умолчанию из SciPy.
     """
-    bounds = parameter_range(name, param, default, step)
+    if st.query_params.get('dist') == info.name:
+        try:
+            value = float(st.query_params.get(param, ''))
+        except ValueError:
+            value = math.nan
+        if math.isfinite(value):
+            return value
+    return info.parameters[param]
+
+
+def parameter_slider(info, param, step):
+    """
+    Ползунок параметра. Границы - область определения параметра из SciPy вокруг значения по умолчанию,
+    расширенная так, чтобы значение из ссылки в нее попадало.
+    """
+    default = info.parameters[param]
+    value = shared_value(info, param)
+    bounds = parameter_range(info.name, param, default, step)
+    low, high = min(bounds.min_value, value), max(bounds.max_value, value)
+    key = f'{info.name}:{param}:{step}'
     if bounds.is_integer:
-        return st.slider(parameter_label(param, default),
-                         min_value=bounds.min_value, value=int(default), max_value=bounds.max_value, step=1)
-    return st.slider(parameter_label(param, default),
-                     min_value=bounds.min_value, value=default, max_value=bounds.max_value, step=step)
+        return st.slider(parameter_label(param, default), min_value=int(low), value=int(round(value)),
+                         max_value=int(high), step=1, key=key)
+    return st.slider(parameter_label(param, default), min_value=low, value=value, max_value=high, step=step,
+                     key=key)
 
 
 def parameter_controls(info):
     """
     Создает ползунки (или поля ввода) для каждого параметра выбранного распределения.
-    Начальные значения - параметры по умолчанию из SciPy.
+    Начальные значения - параметры по умолчанию из SciPy или значения из открытой ссылки.
     :return: {'a': 3.57, 'loc': 0.0, 'scale': 1.0} - значения, выбранные пользователем
     """
     mode = next(iter(PARAMETER_MODES))
@@ -90,10 +112,18 @@ def parameter_controls(info):
     parameters = {}
     for param, default in info.parameters.items():
         if step is None:
-            parameters[param] = st.number_input(parameter_label(param, default), value=default, format='%.4f')
+            parameters[param] = st.number_input(parameter_label(param, default), value=shared_value(info, param),
+                                                format='%.4f', key=f'{info.name}:{param}:manual')
         else:
-            parameters[param] = parameter_slider(info.name, param, default, step)
+            parameters[param] = parameter_slider(info, param, step)
     return parameters
+
+
+def share_state(name, parameters):
+    """
+    Записывает распределение и параметры в адрес страницы: ссылка из адресной строки открывает тот же график.
+    """
+    st.query_params.from_dict({'dist': name, **{param: f'{value:g}' for param, value in parameters.items()}})
 
 
 def show_equation(info):
@@ -141,7 +171,7 @@ def display_controls(sample):
     """
     Настройки отображения рисунка.
     :param sample: Sample или None, если с текущими параметрами распределение построить нельзя
-    :return: (DisplaySettings, показывать ли таблицу описательной статистики)
+    :return: DisplaySettings
     """
     st.markdown("**Выберите режим фигуры:**")
     plot_mode = st.radio("Опции", ('Dark Mode', 'Light Mode'))
@@ -177,28 +207,28 @@ def display_controls(sample):
     sigmas = tuple(column.checkbox(f'{i}σ', value=False)
                    for i, column in enumerate(st.columns(3), start=1))
 
-    st.markdown("**Создать описательную статистику**")
-    show_statistics = st.checkbox('Да', value=False)
-
     settings = DisplaySettings(plot_mode=plot_mode, histogram=histogram,
                                pdf=pdf, pdf_shine=pdf_shine,
                                cdf=cdf, cdf_shine=cdf_shine,
                                sf=sf, sf_shine=sf_shine,
                                mark_p=mark_p, x_cdf=x_cdf,
                                boxplot=boxplot, quantiles=quantiles, sigmas=sigmas)
-    return settings, show_statistics
+    return settings
 
 
-def statistics_table(sample):
+@st.cache_data(max_entries=64, show_spinner='Расчёт статистики...')
+def statistics_table(name, parameters, seed):
     """
     Описательная статистика: свойства распределения рядом со значениями по случайной выборке.
+    Моменты части распределений SciPy считает численно за секунды, поэтому таблица кэшируется.
     """
+    sample = cached_sample(name, parameters, seed)
     rv, r = sample.rv, pd.Series(sample.r)
     with np.errstate(all='ignore'):
         mean, variance, skewness, excess_kurtosis = (float(value) for value in rv.stats(moments='mvsk'))
         q1, median, q3 = rv.ppf([0.25, 0.50, 0.75])
         support_min, support_max = rv.support()
-    statistics = pd.DataFrame(
+    return pd.DataFrame(
         {
             'Распределение': [mean, np.sqrt(variance), variance, skewness, excess_kurtosis,
                               support_min, q1, median, q3, support_max],
@@ -207,20 +237,45 @@ def statistics_table(sample):
         },
         index=['Среднее', 'Стандартное отклонение', 'Дисперсия', 'Асимметрия', 'Эксцесс (избыточный)',
                'Минимум', 'Q1 (25%)', 'Медиана (50%)', 'Q3 (75%)', 'Максимум'])
-    st.dataframe(statistics)
+
+
+def show_chart(settings, sample):
+    figure = Figure(settings=settings, x=sample.x, r=sample.r, rv=sample.rv)
+    try:
+        if any(settings.sigmas) and not figure.sigma_is_defined():
+            st.warning('У этого распределения с такими параметрами среднее или дисперсия не определены '
+                       'либо бесконечны, поэтому область ±σ не показана.')
+        st.pyplot(figure.figure_display_control())
+    except NUMERIC_ERRORS as e:
+        # выборка построилась, но плотность или моменты при таких параметрах SciPy вычислить не смог
+        st.warning(f'SciPy не смог вычислить распределение с такими параметрами: {e}. '
+                   'Измените значения параметров.')
+    finally:
+        # Иначе фигуры накапливаются в памяти при каждом перезапуске скрипта
+        plt.close('all')
+
+
+def show_statistics(name, parameters, seed):
+    try:
+        st.dataframe(statistics_table(name, parameters, seed))
+    except NUMERIC_ERRORS as e:
+        st.warning(f'SciPy не смог вычислить моменты распределения с такими параметрами: {e}.')
+        return
     st.caption('«Распределение» - теоретические значения; nan или inf означает, что величина не определена '
                'или бесконечна. «Выборка» - оценки по случайной выборке, они меняются от выборки к выборке.')
 
 
-def export_code(name, parameters, seed):
+def show_code(name, parameters, seed):
     """
     Показывает сгенерированный скрипт и кнопку, которая его скачивает.
     """
+    st.caption('Скрипт строит PDF, CDF, SF, гистограмму и блочную диаграмму для выбранных параметров '
+               'и ту же выборку, что показана в приложении.')
     code = CodeGenerator(distribution=name, parameters=parameters, seed=seed).get_generated_code()
-    st.code(code)
     st.download_button('Скачать файл Python', data=code,
                        file_name=f'{name}_{time.strftime("%Y%m%d_%H%M%S")}.py',
                        mime='text/x-python', on_click='ignore')
+    st.code(code)
 
 
 def p_explore():
@@ -232,14 +287,18 @@ def p_explore():
 
     st.sidebar.subheader("Исследовать")
 
-    with st.sidebar.expander("Выбрать распределение"):
-        name = st.selectbox('Нажмите ниже (или введите), чтобы выбрать распределение', list(distributions))
+    with st.sidebar.expander("Выбрать распределение", expanded=True):
+        names = list(distributions)
+        shared = st.query_params.get('dist')
+        name = st.selectbox('Нажмите ниже (или введите), чтобы выбрать распределение', names,
+                            index=names.index(shared) if shared in names else 0)
         info = distributions[name]
         st.markdown("**Параметры**")
         parameters = parameter_controls(info)
         seed = sample_seed()
         st.markdown("**SciPy официальная документация:**")
         st.info(f"Подробнее о: [{info.fullname}]({info.url})")
+    share_state(name, parameters)
 
     st.markdown(f"<h1 style='text-align: center;'>{info.fullname}</h1>", unsafe_allow_html=True)
 
@@ -253,33 +312,18 @@ def p_explore():
         st.warning(f'С такими параметрами распределение построить нельзя: {e}. Измените значения параметров.')
 
     with st.sidebar.expander("Настройка отображения"):
-        settings, show_statistics = display_controls(sample)
-
-    with st.sidebar.expander("Экспорт:"):
-        st.info("Хотите **скрипт python?** (Он будет содержать: pdf, cdf, sf, гистограмму и диаграмму)")
-        export_requested = st.button('Сгенерировать код Python')
-        if export_requested:
-            st.write('*Код находится под графиком')
+        settings = display_controls(sample)
+    st.sidebar.caption('Адрес страницы содержит выбранное распределение и параметры: им можно поделиться.')
 
     if sample is None:
         return
 
-    figure = Figure(settings=settings, x=sample.x, r=sample.r, rv=sample.rv)
-    try:
-        if any(settings.sigmas) and not figure.sigma_is_defined():
-            st.warning('У этого распределения с такими параметрами среднее или дисперсия не определены '
-                       'либо бесконечны, поэтому область ±σ не показана.')
-        st.pyplot(figure.figure_display_control())
-        if show_statistics:
-            statistics_table(sample)
-    except NUMERIC_ERRORS as e:
-        # выборка построилась, но плотность или моменты при таких параметрах SciPy вычислить не смог
-        st.warning(f'SciPy не смог вычислить распределение с такими параметрами: {e}. '
-                   'Измените значения параметров.')
-        return
-    finally:
-        # Иначе фигуры накапливаются в памяти при каждом перезапуске скрипта
-        plt.close('all')
-
-    if export_requested:
-        export_code(name, parameters, seed)
+    chart, calculator, statistics, code = st.tabs(['График', 'Калькулятор', 'Статистика', 'Код'])
+    with chart:
+        show_chart(settings, sample)
+    with calculator:
+        show_calculator(sample.rv, sample.x, settings.plot_mode, key=name)
+    with statistics:
+        show_statistics(name, parameters, seed)
+    with code:
+        show_code(name, parameters, seed)

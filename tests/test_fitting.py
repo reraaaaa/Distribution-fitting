@@ -15,6 +15,11 @@ def fitting_page():
     p_fitting()
 
 
+def gamma_data():
+    """Скошенные положительные данные из гамма-распределения с параметрами a = 2.5, loc = 1, scale = 2."""
+    return stats.gamma(2.5, 1.0, 2.0).rvs(size=500, random_state=1)
+
+
 def widget(collection, label):
     found = [w for w in collection if w.label == label]
     assert len(found) == 1, (label, [w.label for w in collection])
@@ -66,12 +71,12 @@ def test_fixed_loc_is_not_counted_as_estimated():
 def test_density_that_does_not_integrate_to_one_is_rejected():
     """vonmises - круговое распределение: на данных шире периода его "плотность" интегрируется в несколько единиц
     и по AIC обгоняла бы честные модели."""
-    result = fitting.fit_distribution('vonmises', fitting.example_data())
+    result = fitting.fit_distribution('vonmises', gamma_data())
     assert not result.ok and 'не нормирована' in result.skipped
 
 
 def test_data_outside_the_support_is_rejected():
-    result = fitting.fit_distribution('anglit', fitting.example_data())
+    result = fitting.fit_distribution('anglit', gamma_data())
     assert not result.ok
 
 
@@ -90,24 +95,110 @@ def test_fit_never_raises(monkeypatch):
 
 
 def test_results_table_is_sorted_by_aic():
-    results = [fitting.fit_distribution(name, fitting.example_data()) for name in ('uniform', 'gamma', 'norm')]
+    results = [fitting.fit_distribution(name, gamma_data()) for name in ('uniform', 'gamma', 'norm')]
     table = fitting.results_table(results)
     assert list(table['Распределение']) == ['gamma', 'norm', 'uniform']
     assert table['ΔAIC'].iloc[0] == 0 and table['AIC'].is_monotonic_increasing
 
 
+# ---------------- ловушки, найденные проверкой на данных, типичных для риска
+
+RISK_CANDIDATES = ['lognorm', 'genpareto', 'lomax', 'invgamma', 'expon', 'gamma', 'weibull_min', 'norm', 't',
+                   'dweibull', 'dgamma', 'beta']
+
+
+def best_of(data, **kwargs):
+    return fitting.ranked([fitting.fit_distribution(name, data, **kwargs) for name in RISK_CANDIDATES])
+
+
+def test_heavy_tailed_truth_is_not_rejected_by_the_normalisation_check():
+    """На равномерной сетке интеграл крутой плотности завышался в разы: верная модель отбрасывалась,
+    и побеждало экспоненциальное распределение с квантилем 99.9%, заниженным на порядок."""
+    data = stats.lognorm(2.5, 0, 1e4).rvs(2000, random_state=7)
+    best = best_of(data)
+    assert best[0].name == 'lognorm'
+    assert best[0].frozen().ppf(0.999) == pytest.approx(stats.lognorm(2.5, 0, 1e4).ppf(0.999), rel=0.5)
+
+
+def test_shape_below_one_is_recovered_with_fixed_loc():
+    best = best_of(stats.gamma(0.5).rvs(2000, random_state=7), fix_loc=True)
+    assert best[0].name == 'gamma'
+    assert best[0].parameters['a'] == pytest.approx(0.5, rel=0.1)
+
+
+@pytest.mark.parametrize('scale', [1.0, 5e4, 1e-3])
+def test_fit_does_not_depend_on_the_units_of_the_data(scale):
+    """Оптимизатор SciPy на данных в рублях или в долях процента не сходился: подгонка идет по стандартизованным."""
+    data = stats.gamma(2, 0, scale).rvs(2000, random_state=7)
+    result = fitting.fit_distribution('gamma', data)
+    assert result.ok
+    assert result.frozen().mean() == pytest.approx(2 * scale, rel=0.1)
+    assert best_of(data)[0].name == 'gamma'
+
+
+def test_unbounded_likelihood_is_rejected():
+    """Свободный сдвиг и параметр формы меньше единицы: оптимизатор ставит особенность плотности
+    на одно наблюдение и получает сколь угодно большое "правдоподобие"."""
+    data = stats.lognorm(1, 0, 1e5).rvs(30, random_state=31)
+    results = {name: fitting.fit_distribution(name, data) for name in ('dgamma', 'dweibull', 'gamma', 'lognorm')}
+    assert results['lognorm'].ok
+    best = fitting.ranked(results.values())
+    assert best[0].aic >= results['lognorm'].aic - 2
+    assert not results['gamma'].ok and 'не ограничено' in results['gamma'].skipped
+
+
+def test_one_outlier_does_not_knock_out_the_true_model():
+    data = np.append(stats.t(4).rvs(1999, random_state=3) * 0.01, 442.6)
+    assert best_of(data)[0].name == 't'
+
+
+def test_boundary_distributions_survive_standardisation():
+    data = stats.expon(3.0, 2.0).rvs(500, random_state=1)
+    result = fitting.fit_distribution('expon', data)
+    assert result.ok and result.parameters['loc'] == pytest.approx(data.min())
+
+
+def test_degenerate_parameters_are_flagged():
+    data = stats.gamma(2, 0, 5e4).rvs(2000, random_state=7)
+    pareto = fitting.fit_distribution('pareto', data)
+    assert pareto.ok and 'вырождается' in pareto.note
+    assert fitting.fit_distribution('gamma', data).note == ''
+    assert 'Замечание' in fitting.results_table([pareto]).columns
+
+
 # ---------------- данные
 
+@pytest.mark.parametrize('values, expected', [
+    (['1,234.56', '983.10', '12,000.00'], [1234.56, 983.10, 12000.0]),
+    (['1.234,56', '983,10', '12.000,00'], [1234.56, 983.10, 12000.0]),
+    (['1 234,5', '2\u00a0000,25', '10,5'], [1234.5, 2000.25, 10.5]),
+    (['(0.05)', '\u22120.02', '0.03'], [-0.05, -0.02, 0.03]),
+    (['1,5', '2,25', '3'], [1.5, 2.25, 3.0]),
+    (['1e-3', '-2.5E2', '+7'], [0.001, -250.0, 7.0]),
+])
+def test_number_formats_are_read_correctly(values, expected):
+    assert fitting.to_numeric(pd.Series(values)).tolist() == pytest.approx(expected)
+
+
+def test_many_unparsed_values_are_an_error_not_silent_loss():
+    """Раньше из файла молча пропадали все значения, записанные в незнакомом формате."""
+    with pytest.raises(fitting.DataError, match='не распознаны'):
+        fitting.clean_data(['12', '3%', 'n/a'] * 10)
+    # единичный мусор отбрасывается и считается
+    data, dropped = fitting.clean_data([*range(100), 'n/a'])
+    assert len(data) == 100 and dropped == 1
+
+
 def test_clean_data_drops_what_is_not_a_number():
-    data, dropped = fitting.clean_data(['1.5', '2,5', 'abc', None, np.inf, *range(10)])
-    assert dropped == 3
-    assert 2.5 in data and len(data) == 12
+    data, dropped = fitting.clean_data(['1.5', '2,5', 'abc', None, '', np.inf, *range(30)])
+    assert dropped == 4
+    assert 2.5 in data and len(data) == 32
 
 
 @pytest.mark.parametrize('values, message', [
     ([1, 2, 3], 'не меньше'),
     ([], 'не меньше'),
-    (['a', 'b', 'c'] * 10, 'не меньше'),
+    (['a', 'b', 'c'] * 10, 'не распознаны'),
     ([7.0] * 50, 'одинаковы'),
 ])
 def test_unusable_data_is_reported(values, message):
@@ -154,7 +245,7 @@ def test_discrete_looking_data_is_detected():
 # ---------------- графики и экспорт
 
 def test_figures_draw_for_both_modes():
-    data = fitting.example_data()
+    data = gamma_data()
     density, edges = fitting.histogram(data)
     best = fitting.ranked([fitting.fit_distribution(name, data) for name in ('gamma', 'norm', 'expon')])
     for mode in ('Dark Mode', 'Light Mode'):
@@ -166,7 +257,7 @@ def test_figures_draw_for_both_modes():
 
 @pytest.mark.parametrize('fix_loc', [False, True])
 def test_exported_script_reproduces_the_fit(monkeypatch, tmp_path, capsys, fix_loc):
-    data = fitting.example_data()
+    data = gamma_data()
     result = fitting.fit_distribution('gamma', data, fix_loc=fix_loc)
     np.savetxt(tmp_path / 'data.csv', data, fmt='%.10g')
     monkeypatch.chdir(tmp_path)
@@ -192,15 +283,20 @@ def test_page_fits_the_example_data():
     widget(at.button, 'Подобрать').click().run()
     assert not at.exception
     table = at.dataframe[0].value
-    assert table['Распределение'].iloc[0] == 'gamma'
-    assert len(table) == len(fitting.DEFAULT_DISTRIBUTIONS)
+    # пример данных - доходности из распределения Стьюдента: оно и должно победить, а нормальное явно проиграть
+    assert table['Распределение'].iloc[0] == fitting.EXAMPLE_DISTRIBUTION
+    assert table[table['Распределение'] == 'norm']['ΔAIC'].iloc[0] > 10
+    assert len(table) >= 8
+    assert [tab.label for tab in at.tabs] == ['Сравнение', 'Графики', 'Калькулятор', 'Экспорт']
     assert [button.label for button in at.download_button] == ['Таблица результатов (CSV)', 'Данные (data.csv)',
                                                                'Скрипт Python']
-    assert 'stats.gamma.fit(data)' in at.code[0].value
+    assert 'stats.t.fit(data)' in at.code[0].value
+    # калькулятор считает меры риска подобранного распределения: дневной VaR 99% порядка нескольких процентов
+    assert 0.01 < float(widget(at.metric, 'VaR 99.0%').value) < 0.10
 
     # смена отображения не сбрасывает результаты
     widget(at.radio, 'Режим фигуры').set_value('Light Mode').run()
-    assert not at.exception and at.dataframe[0].value['Распределение'].iloc[0] == 'gamma'
+    assert not at.exception and at.dataframe[0].value['Распределение'].iloc[0] == 't'
 
     # смена набора распределений требует нового запуска
     widget(at.toggle, 'Зафиксировать loc = 0').set_value(True).run()
@@ -249,6 +345,5 @@ def test_page_handles_all_distributions_on_small_data():
     assert not at.exception
     table = at.dataframe[0].value
     assert len(table) > 60
-    # настоящая модель неотличима от лучшей, а ненормированные "победители" отброшены
-    assert table[table['Распределение'] == 'gamma']['ΔAIC'].iloc[0] < 2
-    assert 'vonmises' not in list(table['Распределение'])
+    # настоящая модель неотличима от лучшей: никакой "победитель" не обгоняет ее заметно
+    assert table[table['Распределение'] == fitting.EXAMPLE_DISTRIBUTION]['ΔAIC'].iloc[0] < 2

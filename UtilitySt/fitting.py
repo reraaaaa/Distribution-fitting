@@ -8,11 +8,13 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
-from scipy import stats
+from scipy import integrate, stats
 
 # Распределения, выбранные по умолчанию
-DEFAULT_DISTRIBUTIONS = ['norm', 'lognorm', 'gamma', 'expon', 'weibull_min', 'beta', 't', 'logistic',
-                         'uniform', 'cauchy']
+# Распределения, выбранные по умолчанию: обычные кандидаты для доходностей (симметричные и скошенные
+# с тяжелыми хвостами) и для положительных убытков
+DEFAULT_DISTRIBUTIONS = ['norm', 't', 'laplace', 'logistic', 'johnsonsu', 'gennorm', 'skewnorm', 'cauchy',
+                         'lognorm', 'gamma', 'weibull_min', 'genpareto']
 
 MIN_OBSERVATIONS = 10
 MAX_OBSERVATIONS = 100_000
@@ -20,8 +22,12 @@ MAX_OBSERVATIONS = 100_000
 MAX_FIT_OBSERVATIONS = 10_000
 # распределение пропускается, если оценка времени его подгонки больше лимита, секунд
 TIME_LIMIT = 15.0
+# если не распознано больше этой доли непустых значений, файл прочитан неверно
+MAX_UNPARSED_SHARE = 0.05
 
-EXAMPLE_PARAMETERS = {'a': 2.5, 'loc': 1.0, 'scale': 2.0}
+# Пример данных: модельные дневные доходности с тяжелыми хвостами
+EXAMPLE_DISTRIBUTION = 't'
+EXAMPLE_PARAMETERS = {'df': 4.0, 'loc': 0.0005, 'scale': 0.012}
 
 
 class DataError(ValueError):
@@ -41,6 +47,7 @@ class FitResult:
            потому что параметры оценены по тем же данным
     :param sse: сумма квадратов отклонений плотности от гистограммы данных
     :param skipped: причина, по которой распределение не подобрано ('' если подобрано)
+    :param note: замечание к подобранному распределению, например о вырожденных параметрах
     """
     name: str
     parameters: dict = field(default_factory=dict)
@@ -52,6 +59,7 @@ class FitResult:
     ks_pvalue: float = math.nan
     sse: float = math.nan
     skipped: str = ''
+    note: str = ''
 
     @property
     def ok(self):
@@ -64,11 +72,12 @@ class FitResult:
         return getattr(stats, self.name)(*self.parameters.values())
 
 
-def example_data(size=500, seed=1):
+def example_data(size=750, seed=1):
     """
-    Пример данных: выборка из гамма-распределения с параметрами EXAMPLE_PARAMETERS.
+    Пример данных: модельные дневные доходности примерно за три года - выборка из распределения Стьюдента
+    с параметрами EXAMPLE_PARAMETERS. У него хвосты тяжелее, чем у нормального, как у настоящих доходностей.
     """
-    return stats.gamma(*EXAMPLE_PARAMETERS.values()).rvs(size=size, random_state=seed)
+    return getattr(stats, EXAMPLE_DISTRIBUTION)(*EXAMPLE_PARAMETERS.values()).rvs(size=size, random_state=seed)
 
 
 def decode(raw):
@@ -147,11 +156,26 @@ def _is_number(value):
 
 def to_numeric(column):
     """
-    Числа из столбца; запятая как десятичный разделитель тоже понимается. Нечисловые значения становятся NaN.
+    Числа из столбца. Понимает десятичную запятую, разделители тысяч ("1 234,5", "1,234.56", "1.234,56"),
+    знак минуса из типографики и отрицательные числа в скобках. Нечисловые значения становятся NaN.
+    Запятая без точки неоднозначна ("1,234" - это 1.234 или 1234): по умолчанию она десятичная, но если
+    в столбце есть значения с обоими разделителями, тысячи определяются по ним для всего столбца.
     """
     if pd.api.types.is_numeric_dtype(column):
         return pd.to_numeric(column, errors='coerce')
-    return pd.to_numeric(column.astype(str).str.strip().str.replace(',', '.', regex=False), errors='coerce')
+    text = column.astype('string').str.strip()
+    text = text.str.replace('\u2212', '-', regex=False).str.replace(r'^\((.+)\)$', r'-\1', regex=True)
+    # пробелы и неразрывные пробелы между цифрами - разделители тысяч
+    text = text.str.replace(r'(?<=\d)[\s\u00a0\u202f](?=\d)', '', regex=True)
+    comma_is_thousands = text.str.contains(r',\d{3}(?:,\d{3})*\.\d|\d,\d{3},\d{3}', regex=True, na=False).any()
+    dot_is_thousands = text.str.contains(r'\.\d{3}(?:\.\d{3})*,\d|\d\.\d{3}\.\d{3}', regex=True, na=False).any()
+    if comma_is_thousands:
+        text = text.str.replace(',', '', regex=False)
+    elif dot_is_thousands:
+        text = text.str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+    else:
+        text = text.str.replace(',', '.', regex=False)
+    return pd.to_numeric(text, errors='coerce')
 
 
 def numeric_columns(table):
@@ -165,10 +189,24 @@ def numeric_columns(table):
 def clean_data(values):
     """
     Оставляет конечные числа и проверяет, что по ним можно подбирать распределение.
+    Молча отбрасываются только пустые ячейки и редкие нечисловые значения: если не распознано больше
+    MAX_UNPARSED_SHARE непустых значений, это ошибка чтения, а не мусор в данных, и подбор по остатку
+    дал бы неверный результат (например, без всех убытков больше тысячи).
     :return: (массив float64, сколько значений отброшено)
-    :raises DataError: мало наблюдений, слишком много наблюдений или все значения одинаковы
+    :raises DataError: мало наблюдений, слишком много наблюдений, все значения одинаковы или много нераспознанных
     """
-    numbers = to_numeric(pd.Series(values)).to_numpy(dtype=float)
+    series = pd.Series(values)
+    numbers = to_numeric(series).to_numpy(dtype=float, na_value=np.nan)
+    filled = (series.notna() & (series.astype('string').str.strip() != '')).to_numpy(dtype=bool, na_value=False)
+    unparsed = filled & np.isnan(numbers)
+    # сами слова nan и inf числами считаются, но в данные не попадают
+    not_a_number_words = series.astype('string').str.strip().str.lower().isin(['nan', 'inf', '-inf', '+inf'])
+    unparsed &= ~not_a_number_words.to_numpy(dtype=bool, na_value=False)
+    if filled.sum() and unparsed.sum() / filled.sum() > MAX_UNPARSED_SHARE:
+        example = str(series[unparsed].iloc[0])
+        raise DataError(f'{unparsed.sum()} из {filled.sum()} значений не распознаны как числа, например «{example}»; '
+                        f'проверьте формат чисел и выбранный столбец')
+
     data = numbers[np.isfinite(numbers)]
     dropped = len(numbers) - len(data)
     if len(data) < MIN_OBSERVATIONS:
@@ -236,13 +274,41 @@ def probability_mass_over_data(dist, estimates, data):
     Больше 1 он бывает у круговых распределений (vonmises: плотность периодична, а данные шире периода)
     и при численных ошибках нормировки в SciPy; правдоподобие такой "плотности" завышено,
     и по AIC она незаслуженно обгоняла бы честные модели.
+    Интегрирование адаптивное, с разбиением по квантилям данных: равномерная сетка на данных с тяжелым
+    хвостом завышает интеграл крутой плотности в разы и отбраковывала бы как раз верную модель.
     """
-    grid = np.linspace(data.min(), data.max(), 4001)
-    density = dist.pdf(grid, *estimates)
-    finite = np.isfinite(density)
-    by_density = float(np.trapezoid(density[finite], grid[finite])) if finite.sum() > 1 else 0.0
-    by_cdf = float(dist.cdf(data.max(), *estimates) - dist.cdf(data.min(), *estimates))
-    return max(by_density, by_cdf)
+    low, high = float(data.min()), float(data.max())
+    by_cdf = float(dist.cdf(high, *estimates) - dist.cdf(low, *estimates))
+    breakpoints = np.unique(np.quantile(data, [0.001, 0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99, 0.999]))
+    breakpoints = breakpoints[(breakpoints > low) & (breakpoints < high)]
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        by_density, _ = integrate.quad(lambda x: dist.pdf(x, *estimates), low, high, points=breakpoints, limit=200)
+    if not math.isfinite(by_density):
+        by_density = 0.0
+    return max(float(by_density), by_cdf)
+
+
+def likelihood_spike(dist, estimates, data):
+    """
+    Насколько логарифм плотности в одном наблюдении выше, чем в следующем за ним.
+    Когда сдвиг оценивается, а параметр формы меньше единицы, правдоподобие не ограничено: оптимизатор
+    придвигает особенность плотности вплотную к одному наблюдению и получает сколь угодно большое
+    "правдоподобие". У настоящей подгонки два наибольших значения близки.
+    """
+    values = np.sort(dist.logpdf(data, *estimates))
+    return float(values[-1] - values[-2])
+
+
+def degeneracy_note(parameters, data):
+    """
+    Замечание о вырожденной подгонке: параметры ушли к границе, и распределение превратилось
+    в предельный случай - более простое распределение с меньшим числом параметров.
+    """
+    shapes = list(parameters.values())[:-2]
+    if parameters['scale'] > 1e3 * np.ptp(data) or any(abs(shape) > 1e4 for shape in shapes):
+        return 'параметры ушли к границе: распределение вырождается в более простое'
+    return ''
 
 
 def fit_distribution(name, data, fix_loc=False, time_limit=TIME_LIMIT):
@@ -255,24 +321,44 @@ def fit_distribution(name, data, fix_loc=False, time_limit=TIME_LIMIT):
     """
     dist = getattr(stats, name)
     n = len(data)
+    # Оптимизатор SciPy стартует от loc = 0, scale = 1 и на данных в рублях или в долях процента
+    # часто не сходится. Подбираем по стандартизованным данным и возвращаем сдвиг и масштаб обратно:
+    # параметры формы от этого не зависят.
+    center = 0.0 if fix_loc else float(np.mean(data))
+    spread = float(np.std(data))
+    standardized = (data - center) / spread
     with warnings.catch_warnings(), np.errstate(all='ignore'):
         warnings.simplefilter('ignore')
         try:
-            estimate = estimated_fit_seconds(dist, data)
+            estimate = estimated_fit_seconds(dist, standardized)
             if estimate > time_limit:
                 return FitResult(name, skipped='плотность считается слишком медленно для подгонки на этих данных')
 
-            estimates = dist.fit(data, floc=0.0) if fix_loc else dist.fit(data)
+            *shapes, loc, scale = dist.fit(standardized, floc=0.0) if fix_loc else dist.fit(standardized)
+            estimates = (*shapes, loc * spread + center, scale * spread)
             shape_names = [sh.strip() for sh in dist.shapes.split(',')] if dist.shapes else []
             parameters = dict(zip([*shape_names, 'loc', 'scale'], (float(value) for value in estimates),
                                   strict=True))
 
             log_likelihood = float(np.sum(dist.logpdf(data, *estimates)))
             if not math.isfinite(log_likelihood):
-                return FitResult(name, skipped='правдоподобие не определено: часть данных лежит вне носителя '
-                                                'распределения или параметры выродились')
+                # у распределений с границей в минимуме данных (expon, pareto) обратный пересчет сдвига
+                # может на ошибку округления вынести крайнее наблюдение за носитель: подбираем напрямую
+                estimates = dist.fit(data, floc=0.0) if fix_loc else dist.fit(data)
+                parameters = dict(zip(parameters, (float(value) for value in estimates), strict=True))
+                log_likelihood = float(np.sum(dist.logpdf(data, *estimates)))
+            if not math.isfinite(log_likelihood):
+                low, high = dist.support(*estimates)
+                if data.min() < low or data.max() > high:
+                    return FitResult(name, skipped='часть данных лежит вне носителя распределения')
+                return FitResult(name, skipped='правдоподобие обратилось в ноль или бесконечность: параметры '
+                                                'выродились либо плотность в хвосте численно исчезает')
+            if not fix_loc and likelihood_spike(dist, estimates, data) > 3:
+                return FitResult(name, skipped='правдоподобие не ограничено: при свободном сдвиге особенность '
+                                                'плотности придвигается к одному наблюдению, и оценка максимального '
+                                                'правдоподобия не существует. Попробуйте зафиксировать loc = 0')
             mass = probability_mass_over_data(dist, estimates, data)
-            if mass > 1.01:
+            if mass > 1.02:
                 return FitResult(name, skipped=f'плотность при подобранных параметрах не нормирована: на диапазоне '
                                                 f'данных она интегрируется в {mass:.2f} вместо значения не больше 1 '
                                                 f'(круговое распределение или численная ошибка SciPy)')
@@ -289,7 +375,8 @@ def fit_distribution(name, data, fix_loc=False, time_limit=TIME_LIMIT):
     return FitResult(name=name, parameters=parameters, n_free=n_free, log_likelihood=log_likelihood,
                      aic=2 * n_free - 2 * log_likelihood,
                      bic=n_free * math.log(n) - 2 * log_likelihood,
-                     ks_statistic=float(ks.statistic), ks_pvalue=float(ks.pvalue), sse=sse)
+                     ks_statistic=float(ks.statistic), ks_pvalue=float(ks.pvalue), sse=sse,
+                     note=degeneracy_note(parameters, data))
 
 
 def ranked(results):
@@ -317,6 +404,7 @@ def results_table(results):
         'Оценено параметров': result.n_free,
         # самая длинная колонка - последней, чтобы показатели были видны без прокрутки
         'Параметры': ', '.join(f'{param} = {value:.4g}' for param, value in result.parameters.items()),
+        'Замечание': result.note,
     } for result in best]
     return pd.DataFrame(rows)
 

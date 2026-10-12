@@ -1,5 +1,6 @@
 __version__ = '1.0.0'
 
+from . import fitting, risk
 from .code_generator import CodeGenerator, FitCodeGenerator
 from .sampling import (
     DEFAULT_SEED,
@@ -10,7 +11,7 @@ from .sampling import (
     parameter_range,
     sample_distribution,
 )
-from .visual import DisplaySettings, Figure, data_figure, fit_figure, qq_figure
+from .visual import DisplaySettings, Figure, data_figure, fit_figure, interval_figure, qq_figure
 
 __all__ = [
     "CodeGenerator",
@@ -24,7 +25,10 @@ __all__ = [
     "Sample",
     "data_figure",
     "fit_figure",
+    "fitting",
+    "interval_figure",
     "parameter_range",
     "qq_figure",
+    "risk",
     "sample_distribution",
 ]

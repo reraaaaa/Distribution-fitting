@@ -22,12 +22,16 @@ st.logo(str(IMAGES / f"logo_{theme}.png"), size='large')
 pages = {
     "introduction": st.Page(p_introduction, title="Главная", icon=":material/home:",
                             url_path="introduction", default=True),
-    "explore": st.Page(p_explore, title="База распределений", icon=":material/monitoring:", url_path="explore"),
+    "explore": st.Page(p_explore, title="Непрерывные", icon=":material/monitoring:", url_path="explore"),
     "fitting": st.Page(p_fitting, title="Подбор закона распределения", icon=":material/query_stats:",
                        url_path="fitting"),
 }
 navigation.register(**pages)
-page = st.navigation(list(pages.values()))
+page = st.navigation({
+    "": [pages["introduction"]],
+    "Распределения": [pages["explore"]],
+    "Данные": [pages["fitting"]],
+})
 page.run()
 
 st.sidebar.caption(f"SciPy {scipy.__version__} · [Исходный код на GitHub]({REPOSITORY})")
