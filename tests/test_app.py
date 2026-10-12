@@ -196,3 +196,11 @@ def test_probability_marker_works_on_a_very_narrow_distribution():
     assert not at.exception
     slider = first_slider(at, 'Установите')
     assert slider.min < slider.value < slider.max
+
+
+def test_normal_distribution_shows_the_familiar_formula():
+    at = select(new_explore_app(), 'norm')
+    formulas = [latex.value for latex in at.latex]
+    assert len(formulas) == 3
+    assert any('sigma' in formula and 'mu' in formula for formula in formulas)
+    assert any('loc' in formula and 'scale' in formula for formula in formulas)

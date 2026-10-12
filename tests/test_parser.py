@@ -84,3 +84,14 @@ def test_multiline_equation_is_wrapped_for_rendering(distributions):
     assert not equation.removesuffix(r'\end{aligned}').rstrip().endswith('\\\\')
     # формулы без выравнивания не трогаем
     assert distributions['norm'].equation.startswith('f(x)')
+
+
+def test_equation_uses_the_scipy_parameterisation(distributions):
+    """Если в документации несколько формул, нужна та, чьи аргументы - параметры формы SciPy."""
+    # у gamma есть еще запись через alpha и beta, у invgauss - через nu и lambda
+    assert distributions['gamma'].equation.startswith('f(x, a)')
+    assert distributions['invgauss'].equation.startswith(r'f(x; \mu)')
+    assert distributions['powerlaw'].equation.startswith('f(x, a) = a x^{a-1}')
+    assert distributions['genhyperbolic'].equation.startswith('f(x, p, a, b)')
+    assert distributions['genpareto'].equation.startswith('f(x, c)')
+    assert distributions['norm'].equation == r'f(x) = \frac{\exp(-x^2/2)}{\sqrt{2\pi}}'

@@ -104,12 +104,14 @@ class DistributionParser:
             if not hasattr(stats, name):
                 continue
             docstring = getattr(stats, name).__doc__ or ''
+            parameters = self._default_parameters(name, default_shapes)
+            shape_names = [param for param in parameters if param not in self.kind.common_parameters]
             distributions[name] = DistributionInfo(name=name,
                                                    fullname=li.text.strip(),
                                                    url=DOCS_URL + href,
                                                    docstring=docstring,
-                                                   equation=self._extract_equation(docstring),
-                                                   parameters=self._default_parameters(name, default_shapes))
+                                                   equation=self._extract_equation(docstring, shape_names),
+                                                   parameters=parameters)
         return distributions
 
     @staticmethod
@@ -136,17 +138,24 @@ class DistributionParser:
         return blocks
 
     @classmethod
-    def _extract_equation(cls, docstring):
+    def _extract_equation(cls, docstring, shape_names=()):
         """
-        Формула плотности: блок math::, который начинается с "f(". Если таких блоков несколько (частный случай
-        и общий), берется тот, у которого больше аргументов. Определения статистик (D_n = ...) плотностью
-        не являются и пропускаются.
+        Формула плотности: блок math::, который начинается с "f(". Если таких блоков несколько (частный случай,
+        другая параметризация), берется тот, чьи аргументы совпадают с параметрами формы SciPy: именно их
+        меняет пользователь. Определения статистик (D_n = ...) плотностью не являются и пропускаются.
+        :param shape_names: имена параметров формы в SciPy, например ['a', 'b']
         :return: например f(x, a) = \\frac{1}{x^2 \\Phi(a) \\sqrt{2\\pi}} или '', если формулы плотности нет
         """
         densities = [block for block in cls._math_blocks(docstring) if re.match(r'f\s*\(', block)]
         if not densities:
             return ''
-        equation = max(densities, key=lambda block: block[:block.index(')')].count(','))
+
+        def arguments(block):
+            inside = block[block.index('(') + 1:block.index(')')]
+            return [argument.strip().lstrip('\\') for argument in re.split('[,;]', inside)]
+
+        expected = ['x', *shape_names]
+        equation = next((block for block in densities if arguments(block) == expected), densities[0])
         # многострочная формула с выравниванием (&, \\\\) рендерится только внутри окружения
         if ('&' in equation or '\\\\' in equation) and not equation.startswith('\\begin'):
             equation = '\\begin{aligned}' + equation.rstrip('\\ ') + '\\end{aligned}'

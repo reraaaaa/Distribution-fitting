@@ -30,6 +30,18 @@ PARAMETER_MODES = {
 }
 
 
+# Как параметры loc и scale входят в плотность любого распределения SciPy
+LOC_SCALE_FORM = (r'f(x;\ \mathrm{loc}, \mathrm{scale}) = '
+                  r'\frac{1}{\mathrm{scale}}\, f\!\left(\frac{x - \mathrm{loc}}{\mathrm{scale}}\right)')
+
+# Привычная запись плотности для распределений, которые принято параметризовать иначе, чем в SciPy
+FAMILIAR_FORMS = {
+    'norm': ('Для нормального распределения loc - это среднее μ, а scale - стандартное отклонение σ:',
+             r'f(x;\ \mu, \sigma) = \frac{1}{\sigma\sqrt{2\pi}} '
+             r'\exp\!\left(-\frac{(x - \mu)^2}{2\sigma^2}\right)'),
+}
+
+
 @st.cache_resource(show_spinner='Загрузка списка распределений из документации SciPy...')
 def load_distributions(type_rv):
     """
@@ -82,6 +94,21 @@ def parameter_controls(info):
         else:
             parameters[param] = parameter_slider(info.name, param, default, step)
     return parameters
+
+
+def show_equation(info):
+    """
+    SciPy записывает плотность в стандартной форме, без сдвига и масштаба. Показываем ее и то,
+    как в нее входят loc и scale, а для нормального распределения - еще и привычную запись через μ и σ.
+    """
+    st.latex(info.equation)
+    st.caption('Это стандартная форма из документации SciPy: loc = 0, scale = 1. '
+               'Со сдвигом и масштабом плотность равна:')
+    st.latex(LOC_SCALE_FORM)
+    if info.name in FAMILIAR_FORMS:
+        note, equation = FAMILIAR_FORMS[info.name]
+        st.caption(note)
+        st.latex(equation)
 
 
 def sample_seed():
@@ -217,9 +244,7 @@ def p_explore():
     st.markdown(f"<h1 style='text-align: center;'>{info.fullname}</h1>", unsafe_allow_html=True)
 
     if info.equation:
-        st.latex(info.equation)
-        st.caption('Плотность стандартной формы (loc = 0, scale = 1). '
-                   'С параметрами сдвига и масштаба: f((x - loc) / scale) / scale.')
+        show_equation(info)
 
     try:
         sample = cached_sample(name, parameters, seed)
