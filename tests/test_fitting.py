@@ -158,6 +158,27 @@ def test_boundary_distributions_survive_standardisation():
     assert result.ok and result.parameters['loc'] == pytest.approx(data.min())
 
 
+@pytest.mark.parametrize('c', [0.3, 0.8])
+def test_standardisation_does_not_send_genpareto_to_a_false_optimum(c):
+    """После стандартизации оптимизатор находил c = 2.7 вместо 0.8, и VaR 99% завышался в тысячу раз."""
+    truth = stats.genpareto(c, 0, 5e4)
+    data = truth.rvs(1000, random_state=3)
+    result = fitting.fit_distribution('genpareto', data)
+    assert result.ok
+    assert result.log_likelihood >= float(np.sum(truth.logpdf(data))) - 1
+    assert result.frozen().ppf(0.99) == pytest.approx(truth.ppf(0.99), rel=0.5)
+
+
+def test_anderson_darling_is_symmetric_in_the_tails():
+    data = stats.norm().rvs(300, random_state=4)
+    # зеркальные данные: выброс справа и такой же выброс слева должны давать одну и ту же статистику
+    right = fitting.anderson_darling(stats.norm, (0, 1), np.append(data, 38.0))
+    left = fitting.anderson_darling(stats.norm, (0, 1), np.append(-data, -38.0))
+    clean = fitting.anderson_darling(stats.norm, (0, 1), data)
+    assert right == pytest.approx(left, rel=1e-9)
+    assert right > clean + 1
+
+
 def test_degenerate_parameters_are_flagged():
     data = stats.gamma(2, 0, 5e4).rvs(2000, random_state=7)
     pareto = fitting.fit_distribution('pareto', data)

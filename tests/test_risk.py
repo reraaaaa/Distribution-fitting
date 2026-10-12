@@ -41,6 +41,39 @@ def test_es_is_infinite_when_the_tail_has_no_mean():
     assert math.isinf(risk.expected_shortfall(stats.levy(), 0.99, risk.RIGHT))
 
 
+def test_tail_is_judged_by_itself_not_by_the_mean_of_the_distribution():
+    # SciPy возвращает для invweibull(0.9) среднее -9.7, хотя оно бесконечно: ES не должен стать меньше VaR
+    assert math.isinf(risk.expected_shortfall(stats.invweibull(0.9), 0.99, risk.RIGHT))
+    # у crystalball среднее бесконечно из-за левого хвоста, а правый хвост гауссов и конечен
+    rv = stats.crystalball(1, 1.5)
+    right = risk.expected_shortfall(rv, 0.99, risk.RIGHT)
+    assert math.isfinite(right) and right >= risk.value_at_risk(rv, 0.99, risk.RIGHT)
+    assert math.isinf(risk.expected_shortfall(rv, 0.99, risk.LEFT))
+
+
+@pytest.mark.parametrize('sigma', [0.5, 2.0, 4.0, 6.0, 8.0])
+def test_lognormal_right_tail_es_matches_closed_form(sigma):
+    """При sigma от 4 значение раньше объявлялось неопределенным, а при 8 молча занижалось на 93%."""
+    level = 0.99
+    z = stats.norm.ppf(level)
+    closed = math.exp(sigma ** 2 / 2) * stats.norm.cdf(sigma - z) / (1 - level)
+    assert risk.expected_shortfall(stats.lognorm(sigma), level, risk.RIGHT) == pytest.approx(closed, rel=1e-4)
+
+
+@pytest.mark.parametrize('b', [1.01, 1.2, 3.0])
+def test_pareto_es_matches_closed_form(b):
+    level = 0.99
+    var = (1 - level) ** (-1 / b)
+    assert risk.expected_shortfall(stats.pareto(b), level, risk.RIGHT) == pytest.approx(var * b / (b - 1), rel=1e-3)
+    assert math.isinf(risk.expected_shortfall(stats.pareto(0.95), level, risk.RIGHT))
+
+
+def test_discrete_es_with_a_heavy_tail_does_not_exhaust_memory():
+    assert math.isnan(risk.expected_shortfall(stats.zipf(2.2), 0.99, risk.RIGHT))
+    value = risk.expected_shortfall(stats.zipf(4.0), 0.99, risk.RIGHT)
+    assert math.isfinite(value) and value >= risk.value_at_risk(stats.zipf(4.0), 0.99, risk.RIGHT)
+
+
 def test_interval_probability():
     rv = stats.norm()
     assert risk.interval_probability(rv, -1.96, 1.96) == pytest.approx(0.95, abs=1e-3)

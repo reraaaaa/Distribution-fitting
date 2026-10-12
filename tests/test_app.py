@@ -262,5 +262,5 @@ def test_calculator_matches_scipy():
 def test_expected_shortfall_is_undefined_without_a_tail_mean():
     at = select(new_explore_app(), 'cauchy')
     assert not at.exception
-    assert metric(at, 'Expected Shortfall 99.0%') == 'не определено'
+    assert metric(at, 'Expected Shortfall 99.0%') == 'бесконечно'
     assert float(metric(at, 'VaR 99.0%')) > 0

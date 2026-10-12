@@ -71,11 +71,12 @@ Parameters travel as one ordered dict in SciPy's positional order: `{*shape_para
 
 Each of these produced a wrong winner before it was guarded, and each has a regression test in `tests/test_fitting.py`.
 
-- **Fit standardised data.** SciPy's optimiser starts from loc 0, scale 1 and fails on data in currency units or in fractions of a percent. `fit_parameters` standardises, fits, and maps loc and scale back.
+- **Fit twice, keep the better.** SciPy's optimiser starts from loc 0, scale 1 and fails on data in currency units or in fractions of a percent, so `fit_parameters` fits standardised data and maps loc and scale back. But standardising sends `genpareto` and `burr12` to a false optimum, so it also fits the raw data and keeps the higher likelihood.
 - **A fitted density must integrate to at most 1 over the data.** Circular distributions (`vonmises`) and SciPy normalisation errors (`gausshyper`) otherwise win on AIC with an inflated likelihood. The integral must be adaptive with breakpoints at data quantiles: a uniform grid overshoots a steep density on heavy-tailed data several times over and rejects the true model.
 - **Unbounded likelihood.** With a free loc and a shape below one, the optimiser parks a density singularity on one observation. `likelihood_spike` rejects such fits.
 - **Tabulated KS p-values are inflated** when parameters come from the same data, so the table shows statistics only; p-values come from `goodness_of_fit`, which refits on every simulated sample.
 - **Silent data loss is worse than an error.** `clean_data` raises when more than 5% of non-empty values fail to parse; `to_numeric` handles thousands separators, decimal commas, typographic minus signs and parentheses.
+- **Expected Shortfall is the tail average of the quantile function**, integrated in `u = -ln p` in three chunks with a geometric remainder (`risk._continuous_expected_shortfall`). Whether the tail mean is finite is decided from that tail itself: `rv.mean()` is wrong for some SciPy distributions (`invweibull`) and can be infinite because of the other tail (`crystalball`). `inf` means no tail mean, `nan` means not computable.
 - `fit_distribution` never raises: a failed or rejected fit is a `FitResult` with a reason in `skipped`. Slow distributions are skipped by a time estimate, not a timeout.
 
 ### Tests

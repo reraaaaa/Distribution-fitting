@@ -317,19 +317,36 @@ def fit_parameters(dist, data, fix_loc=False):
     """
     Оценки максимального правдоподобия в порядке SciPy: параметры формы, loc, scale.
     Оптимизатор SciPy стартует от loc = 0, scale = 1 и на данных в рублях или в долях процента
-    часто не сходится. Подбираем по стандартизованным данным и возвращаем сдвиг и масштаб обратно:
-    параметры формы от этого не зависят.
+    часто не сходится. Подбор по стандартизованным данным с пересчетом сдвига и масштаба обратно это лечит:
+    параметры формы от единиц измерения не зависят.
+    Но у части распределений (genpareto, burr12) стандартизация, наоборот, уводит оптимизатор в ложный
+    максимум, а у распределений с границей в минимуме данных (expon, pareto) обратный пересчет сдвига может
+    на ошибку округления вынести крайнее наблюдение за носитель. Поэтому подбираем обоими способами
+    и берем оценку с большим правдоподобием.
     """
     center = 0.0 if fix_loc else float(np.mean(data))
     spread = float(np.std(data))
     standardized = (data - center) / spread
-    *shapes, loc, scale = dist.fit(standardized, floc=0.0) if fix_loc else dist.fit(standardized)
-    estimates = (*shapes, loc * spread + center, scale * spread)
-    if not math.isfinite(float(np.sum(dist.logpdf(data, *estimates)))):
-        # у распределений с границей в минимуме данных (expon, pareto) обратный пересчет сдвига
-        # может на ошибку округления вынести крайнее наблюдение за носитель: подбираем напрямую
-        estimates = dist.fit(data, floc=0.0) if fix_loc else dist.fit(data)
-    return tuple(float(value) for value in estimates)
+
+    def log_likelihood(estimates):
+        value = float(np.sum(dist.logpdf(data, *estimates)))
+        return value if math.isfinite(value) else -math.inf
+
+    candidates = []
+    for attempt in ('standardized', 'direct'):
+        try:
+            if attempt == 'standardized':
+                *shapes, loc, scale = dist.fit(standardized, floc=0.0) if fix_loc else dist.fit(standardized)
+                estimates = (*shapes, loc * spread + center, scale * spread)
+            else:
+                estimates = dist.fit(data, floc=0.0) if fix_loc else dist.fit(data)
+        except Exception as e:
+            failure = e
+            continue
+        candidates.append(tuple(float(value) for value in estimates))
+    if not candidates:
+        raise failure
+    return max(candidates, key=log_likelihood)
 
 
 def anderson_darling(dist, estimates, data):
@@ -339,9 +356,12 @@ def anderson_darling(dist, estimates, data):
     """
     ordered = np.sort(data)
     n = len(ordered)
-    cdf = np.clip(dist.cdf(ordered, *estimates), 1e-300, 1 - 1e-16)
+    # logcdf и logsf точны в обоих хвостах; ограничение снизу одинаково для обоих и нужно только затем,
+    # чтобы наблюдение на самой границе носителя (логарифм нуля) не обратило статистику в бесконечность
+    log_cdf = np.clip(dist.logcdf(ordered, *estimates), -700, 0)
+    log_sf = np.clip(dist.logsf(ordered, *estimates), -700, 0)
     i = np.arange(1, n + 1)
-    return float(-n - np.sum((2 * i - 1) * (np.log(cdf) + np.log1p(-cdf[::-1]))) / n)
+    return float(-n - np.sum((2 * i - 1) * (log_cdf + log_sf[::-1])) / n)
 
 
 def fit_distribution(name, data, fix_loc=False, time_limit=TIME_LIMIT):
@@ -527,6 +547,7 @@ def interval_table(result, replicates, quantities=None, level=0.95):
         with np.errstate(all='ignore'):
             values = np.array([function(dist(*row)) for row in replicates.itertuples(index=False)], dtype=float)
         values = values[np.isfinite(values)]
-        rows[label] = (function(result.frozen()), np.quantile(values, low), np.quantile(values, high))
+        bounds = (np.quantile(values, low), np.quantile(values, high)) if len(values) else (math.nan, math.nan)
+        rows[label] = (function(result.frozen()), *bounds)
     return pd.DataFrame.from_dict(rows, orient='index',
                                   columns=['Оценка', f'Нижняя граница {level:.0%}', f'Верхняя граница {level:.0%}'])
