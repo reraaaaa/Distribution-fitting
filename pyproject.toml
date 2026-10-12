@@ -1,0 +1,10 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::RuntimeWarning"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["venv", ".tmp"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]

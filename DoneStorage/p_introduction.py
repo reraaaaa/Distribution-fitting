@@ -37,7 +37,7 @@ def p_introduction():
     st.info("""
              Приложение включает в себя следующие разделы: \n
              - База распределений - раздел для исследования и изучения законов распределения
-             - Подбор закона распределения - раздел для поиска подходящего закона на основе пользовательских данных 
+             - Подбор закона распределения - раздел для поиска подходящего закона на основе пользовательских данных
              $ ←$ Чтобы начать работу с приложением, выберите параметр на левой боковой панели.
              """)
     st.info("""
@@ -59,7 +59,7 @@ def p_introduction():
         st.warning('Select Distribution')
         st.info("""
                 - Select distribution from Dropdown Menu (or type its name)
-                - Change distribution parameters on sliders and see the change. 
+                - Change distribution parameters on sliders and see the change.
                 - Check created hyperlink to **SciPy** official documentation at the bottom of the sidebar.
                 """)
 
@@ -70,7 +70,7 @@ def p_introduction():
         show_image(image2)
     with feature4:
         st.warning('Tweak Display')
-        st.info("""
+        st.info(r"""
                 - Pick *Dark/Light Theme*
                 - Select **on/off** each option: Histogram, PDF, CDF, SF,
                 boxplot, quantiles, or shade 1/2/3 $\sigma$.
@@ -84,7 +84,7 @@ def p_introduction():
     with feature6:
         st.warning('Export')
         st.info("""
-                - Generate a Python code with selected distribution and 
+                - Generate a Python code with selected distribution and
                 parameters
                 - Save .py file or copy to clipboard to take it home.
                 """)
@@ -122,8 +122,8 @@ def p_introduction():
         st.warning('Results & Export')
         st.info("""
                 - Interactive **Figures**
-                - **Table** with all fitted distribution(s) 
-                - Generate **Python code** with best fit distribution 
+                - **Table** with all fitted distribution(s)
+                - Generate **Python code** with best fit distribution
                 """)
     with feature11:
         show_image(image6)
@@ -133,7 +133,7 @@ def p_introduction():
     st.info('There are 100 continuous distribution functions  \
                 from **SciPy v1.6.1** available to play with.')
 
-    st.markdown("""
+    st.markdown(r"""
 
                 - Abriviations:
 
@@ -143,13 +143,13 @@ def p_introduction():
 
                     - SF - Survival Function
 
-                    - P(X<=x) - Probability of obtaining a value smaller than 
+                    - P(X<=x) - Probability of obtaining a value smaller than
                                 x for selected x.
 
-                    - Empirical quantiles for a data array: 
+                    - Empirical quantiles for a data array:
                         Q1, Q2, Q3 respectively 0.25, 0.50, 0.75
 
-                    - $\sigma$ (Standard Deviation). On plot shades: 
+                    - $\sigma$ (Standard Deviation). On plot shades:
                         mean$\pm x\sigma$
 
                     - SSE - Sum of squared estimate of errors

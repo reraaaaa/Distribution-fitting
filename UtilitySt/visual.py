@@ -1,6 +1,6 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats.mstats import mquantiles
-import matplotlib.pyplot as plt
 
 
 class Figure(object):

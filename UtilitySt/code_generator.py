@@ -25,64 +25,64 @@ class CodeGenerator(object):
         # -*- coding: utf-8 -*-
         # {time.strftime("%Y%m%d_%H%M%S")}
         # ---
-        
+
         import matplotlib.pyplot as plt #v3.2.2
         import numpy as np #v1.18.5
         from scipy.stats import {self.select_distribution} #v1.6.1
-        
+
         # Set random seed
         np.random.seed(1)
-        
+
         # Function parameters
         {self.scale}
         {self.loc}
         {a}
-        
+
         # Генерировать равномерно числа в течение указанного интервала
         size = 400
-        x = np.linspace({self.select_distribution}.ppf(0.001, {self.name} loc=loc, scale=scale ), 
+        x = np.linspace({self.select_distribution}.ppf(0.001, {self.name} loc=loc, scale=scale ),
                         {self.select_distribution}.ppf(0.999, {self.name} loc=loc, scale=scale ),
                         size)
-        
+
         # Freeze the distribution
         rv = {self.select_distribution}({self.name} loc=loc, scale=scale)
-        
+
         # Generate random numbers
         r = {self.select_distribution}.rvs({self.name} loc=loc, scale=scale, size=size)
-        
+
         # Make a plot
         fig, ax = plt.subplots(2, 1,
                                gridspec_kw={{'height_ratios': [9, 0.7]}})
-        
+
         # Plot PDF, CDF and SF
         ax[0].plot(x, rv.pdf(x), linestyle='-', color='#3182bd', lw=3, label='PDF')
         ax[0].plot(x, rv.cdf(x), linestyle='-', color='k', lw=3, label='CDF')
         ax[0].plot(x, rv.sf(x), linestyle='-', color='#df65b0', lw=3, label='SF')
-        
+
         # Plot Histogram
         ax[0].hist(r, density=True, bins=20, color='lightgrey',
                    edgecolor='k', label='Sample')
-        
+
         # Plot Boxplot
         bp = ax[1].boxplot(r, patch_artist=True,
                    vert=False,
                    notch=False,
                    showfliers=False,
-                   ) 
+                   )
         # Boxplot aestetic
-        for median in bp['medians']: median.set(color ='red', linewidth = 2) 
-        for patch in bp['boxes']: patch.set(facecolor='white') 
-        
+        for median in bp['medians']: median.set(color ='red', linewidth = 2)
+        for patch in bp['boxes']: patch.set(facecolor='white')
+
         # Set legend
-        ax[0].legend(bbox_to_anchor=(0,1.1,1,0.2), 
-                     loc="center", 
+        ax[0].legend(bbox_to_anchor=(0,1.1,1,0.2),
+                     loc="center",
                      borderaxespad=0, ncol=2)
-        
+
         # Set Figure aestetics
         ax[0].spines['top'].set_visible(False)
         ax[0].spines['right'].set_visible(False)
         ax[0].set_title('Distribution: {self.select_distribution}')
-        
+
         ax[1].set_xlim(ax[0].get_xlim())
         ax[1].set_ylim(0.9, 1.1)
         ax[1].spines['left'].set_visible(False)
@@ -90,11 +90,11 @@ class CodeGenerator(object):
         ax[1].spines['right'].set_visible(False)
         ax[1].set_yticklabels([])
         ax[1].set_yticks([])
-        
+
         ax[1].set_xlabel('X value')
         ax[0].set_ylabel('Density')
-        
+
         plt.show()
-        
+
         """
         return textwrap.dedent(generate_code).strip() + '\n'

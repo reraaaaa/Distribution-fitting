@@ -3,10 +3,10 @@
 Created on 29/12/2023
 Aauthor: D-one
 """
-from bs4 import BeautifulSoup
 import requests
-from scipy import stats
 import scipy.stats._distr_params  # noqa: F401 - значения параметров по умолчанию
+from bs4 import BeautifulSoup
+from scipy import stats
 
 
 class DistributionParser:
@@ -170,15 +170,16 @@ class DistributionParser:
         """
         all_params_names, all_params = self.parameters
         return {
-            'doc_dic': {distribution: doc for distribution, doc in zip(self.names, self.docstrings)},
-            'functions_dic': {distribution: function for distribution, function in zip(self.names, self.equations)},
-            'fullname_dic': {distribution: fullname for distribution, fullname in zip(self.names, self.distributions)},
+            'doc_dic': dict(zip(self.names, self.docstrings, strict=True)),
+            'functions_dic': dict(zip(self.names, self.equations, strict=True)),
+            'fullname_dic': dict(zip(self.names, self.distributions, strict=True)),
             'parameters_dic': {
-                function: {param: f"{value:.2f}" for param, value in zip(all_params_names[i], all_params[i]) if
-                           isinstance(value, (int, float))}
+                function: {param: f"{value:.2f}"
+                           for param, value in zip(all_params_names[i], all_params[i], strict=True)
+                           if isinstance(value, (int, float))}
                 for i, function in enumerate(self.names)},
             'url_dic': {distribution: [url, fullname] for distribution, url, fullname in
-                        zip(self.names, self.urls, self.distributions)}
+                        zip(self.names, self.urls, self.distributions, strict=True)}
         }
 
     def get_distributions_and_hrefs(self):

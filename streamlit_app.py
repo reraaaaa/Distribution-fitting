@@ -5,7 +5,6 @@ Author: D-one
 
 import os
 
-import numpy as np
 import streamlit as st
 
 from DoneStorage.p_explore_2 import p_explore
@@ -30,7 +29,7 @@ def run_app():
 
     st.sidebar.header("О нас")
     st.sidebar.warning(
-        """ 
+        """
     доп инфа
     """
     )

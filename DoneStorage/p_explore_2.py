@@ -4,17 +4,18 @@ Created on 03/01/2022
 Aauthor: D-one
 """
 
+import base64
+import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import streamlit as st
 from scipy import stats
-from scipy.stats.mstats import mquantiles
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import time
-import base64
+
 import ParsDistributions.parser as dps
-import UtilitySt.visual as fg
 import UtilitySt.code_generator as cg
+import UtilitySt.visual as fg
 
 
 @st.cache_resource(show_spinner='Загрузка списка распределений из документации SciPy...')
@@ -43,10 +44,7 @@ def p_explore():
         :return: Расширение
         """
         if sidebar:
-            try:
-                return st.sidebar.expander(expander_name)
-            except:
-                return st.sidebar.beta_expander(expander_name)
+            return st.sidebar.expander(expander_name)
 
     def create_slider(param, parameter_value, step_value):
         """
@@ -110,7 +108,7 @@ def p_explore():
                                                 )
             if select_distribution in parameters_dic.keys():
                 sliders_params = []
-                for i, param in enumerate(parameters_dic[f'{select_distribution}']):
+                for param in parameters_dic[f'{select_distribution}']:
                     parameter_value = float(parameters_dic.get(f'{select_distribution}').get(param))
 
                     try:
@@ -123,14 +121,14 @@ def p_explore():
                         if vary_parameters_mode == 'Ручной ввод значений параметров':
                             manual = create_manual_input(param, parameter_value)
                             sliders_params.append(manual)
-                    except:
+                    except Exception:
                         slider_i = create_slider(param, parameter_value, 0.10)
                         sliders_params.append(slider_i)
 
                 st.markdown("**SciPy официальная документация:**")
                 scipy_link = f'[{url_dic[select_distribution][1]}]({url_dic[select_distribution][0]})'
                 st.info(f"""
-                        Подробнее о: 
+                        Подробнее о:
                         {scipy_link}
                         """)
 
@@ -243,17 +241,17 @@ def p_explore():
         st.markdown("**Область тени **")
         left_std, sig1, middle_std, sig2, right_std, sig3 = st.columns([0.012, 0.044, 0.02, 0.038, 0.02, 0.038])
         with sig1:
-            st.markdown("1$\sigma$")
+            st.markdown(r"1$\sigma$")
         with left_std:
             # Нужно оставить имя пустым, так как нам нужна сигма
             s1 = st.checkbox('', value=False)
         with sig2:
-            st.markdown("2$\sigma$")
+            st.markdown(r"2$\sigma$")
         with middle_std:
             # Нужен пустой, с пробелом, чтобы ключ генерации не перекрывался
             s2 = st.checkbox(' ', value=False)
         with sig3:
-            st.markdown("3$\sigma$")
+            st.markdown(r"3$\sigma$")
         with right_std:
             s3 = st.checkbox('   ', value=False)
 
@@ -358,7 +356,7 @@ def p_explore():
     scale, loc, name, p = how_many_params(sliders_params, s, select_distribution)
 
     # Извлеченный p имеет вид: ['a=4.3', 'b=4.0'], поэтому нужно удалить [',']
-    a = str([i for i in p]).strip(" [] ").strip("'").replace("'", '').replace(", ", '\n')
+    a = '\n'.join(p)
 
     # Нужно отформатировать вывод, чтобы я мог получить параметры формы без дополнительных символов.
     def get_n(name):
@@ -366,7 +364,7 @@ def p_explore():
         if len(name) == 0:
             name = ''
         else:
-            name = str([i for i in name]).strip(" [] ").strip("'").replace("'", '') + ','
+            name = ', '.join(name) + ','
         return name
 
     name = get_n(name)
