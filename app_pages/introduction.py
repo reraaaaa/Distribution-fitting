@@ -3,112 +3,101 @@ Created on 21/12/2021
 Aauthor: D-one
 """
 
+import numpy as np
+import pandas as pd
 import scipy
 import streamlit as st
+from scipy import stats
 
-image1 = ""
-image2 = ""
-image3 = ""
-image4 = ""
-image5 = ""
-image6 = ""
+from .explore import load_distributions
+from .navigation import page_link
 
-def show_image(image):
-    # Пока скриншоты не добавлены, пустые заглушки не показываем
-    if image:
-        st.image(image, width='stretch')
+# Распределения для графика на главной: подпись -> замороженное распределение
+PREVIEW = {
+    'Нормальное': stats.norm(loc=2, scale=1),
+    'Гамма, a = 2': stats.gamma(a=2),
+    'Логнормальное, s = 0.6': stats.lognorm(s=0.6),
+    'Экспоненциальное': stats.expon(),
+}
+
+
+def preview_chart():
+    """
+    Плотности нескольких знакомых распределений на одном графике.
+    """
+    x = np.linspace(0, 6, 301)
+    densities = pd.DataFrame({label: rv.pdf(x) for label, rv in PREVIEW.items()}, index=pd.Index(x, name='x'))
+    st.line_chart(densities, height=320, x_label='x', y_label='Плотность')
+
+
+def distribution_count():
+    """
+    :return: число распределений в базе или None, если документация SciPy недоступна
+    """
+    try:
+        return len(load_distributions('continuous'))
+    except Exception:
+        return None
 
 
 def p_introduction():
-    st.markdown("<h2 style='text-align: center;'> Добро пожаловать в </h2>",
-                unsafe_allow_html=True)
-    st.markdown("<h1 style='text-align: center;'> Distribution Fitting </h1>",
-                unsafe_allow_html=True)
+    st.title('Distribution Fitting')
+    st.markdown('#### Интерактивный справочник непрерывных распределений вероятностей')
+    st.write('Выберите распределение, двигайте его параметры и смотрите, как меняются плотность, '
+             'функция распределения и случайная выборка. Все расчёты выполняет SciPy.')
+    page_link('explore', 'Открыть базу распределений', icon=':material/arrow_forward:')
 
-    st.info("""
-             Приложение включает в себя следующие разделы: \n
-             - База распределений - раздел для исследования и изучения законов распределения
-             - Подбор закона распределения - раздел для поиска подходящего закона на основе пользовательских данных
-             $ ←$ Чтобы начать работу с приложением, выберите параметр на левой боковой панели.
-             """)
-    st.info("""
-             - Дополнительная инструкция
-             """)
+    preview_chart()
 
-    def make_line():
-    # Линия-разделитель
-        line = st.markdown('<hr style="border:1px solid gray"> </hr>',
-                           unsafe_allow_html=True)
-        return line
+    count = distribution_count()
+    distributions, plots, engine = st.columns(3)
+    distributions.metric('Распределений', count if count is not None else '—')
+    plots.metric('Функций на графике', 'PDF · CDF · SF')
+    engine.metric('Расчёты', f'SciPy {scipy.__version__}')
 
-    # Описание
-    st.error('База распределений')
-    feature1, feature2 = st.columns([0.5, 0.4])
-    with feature1:
-        show_image(image1)
-    with feature2:
-        st.warning('Выбор распределения')
-        st.info("""
-                - Выберите распределение в выпадающем списке (или введите его имя).
-                - Меняйте параметры распределения ползунками и смотрите, как меняется график.
-                - Ссылка на официальную документацию **SciPy** находится под параметрами.
-                """)
+    st.subheader('Разделы')
+    explore, fitting = st.columns(2)
+    with explore.container(border=True):
+        st.markdown('##### :material/monitoring: База распределений')
+        st.markdown(
+            '- Параметры меняются ползунками в границах области определения\n'
+            '- Формула плотности и ссылка на документацию SciPy\n'
+            '- Квартили и области среднее ± σ с реальной вероятностью\n'
+            '- Таблица: теория рядом с оценками по выборке\n'
+            '- Экспорт готового скрипта Python'
+        )
+        page_link('explore', 'Перейти', icon=':material/arrow_forward:')
+    with fitting.container(border=True):
+        st.markdown('##### :material/query_stats: Подбор закона распределения')
+        st.markdown(
+            '- Загрузка собственных данных\n'
+            '- Подбор параметров для выбранных распределений\n'
+            '- Сравнение качества подгонки\n'
+        )
+        st.caption('Раздел в разработке.')
 
-    make_line()
+    st.subheader('Как пользоваться')
+    first, second, third = st.columns(3)
+    with first.container(border=True):
+        st.markdown('**1. Выберите распределение**')
+        st.caption('В боковой панели раздела «База распределений»: выпадающий список с поиском по имени.')
+    with second.container(border=True):
+        st.markdown('**2. Настройте параметры**')
+        st.caption('Ползунки или ручной ввод. Недопустимое сочетание параметров даёт предупреждение.')
+    with third.container(border=True):
+        st.markdown('**3. Изучите и сохраните**')
+        st.caption('Включайте линии и статистику в «Настройке отображения», скачивайте скрипт в «Экспорте».')
 
-    feature3, feature4 = st.columns([0.6, 0.4])
-    with feature3:
-        show_image(image2)
-    with feature4:
-        st.warning('Настройка отображения')
-        st.info("""
-                - Выберите *тёмную или светлую тему*.
-                - Включайте и выключайте: гистограмму, PDF, CDF, SF,
-                блочную диаграмму, квартили, области среднее ± 1/2/3 $\\sigma$.
-                - Получите таблицу описательной статистики.
-                """)
-    make_line()
-
-    feature5, feature6 = st.columns([0.6, 0.4])
-    with feature5:
-        show_image(image3)
-    with feature6:
-        st.warning('Экспорт')
-        st.info("""
-                - Сгенерируйте код Python с выбранным распределением и параметрами.
-                - Скачайте файл .py или скопируйте код.
-                """)
-
-    make_line()
-
-    st.error('Подбор закона распределения')
-    st.info('Раздел в разработке.')
-
-    make_line()
-
-    st.info(f'Доступны непрерывные распределения из **SciPy v{scipy.__version__}**.')
-
-    st.markdown("""
-
-                - Сокращения и обозначения:
-
-                    - PDF - функция плотности вероятности (Probability Density Function)
-
-                    - CDF - функция распределения (Cumulative Distribution Function)
-
-                    - SF - функция выживания (Survival Function), SF(x) = 1 - CDF(x)
-
-                    - P(X<=x) - вероятность получить значение не больше x
-                                для выбранного x
-
-                    - Q1, Q2, Q3 - квартили распределения: значения, ниже которых лежит
-                                25%, 50% и 75% вероятности
-
-                    - $\\sigma$ - стандартное отклонение распределения. На графике закрашивается
-                                область среднее $\\pm k\\sigma$, в легенде указана вероятность попадания в неё.
-                                Доли 68%, 95% и 99.7% верны только для нормального распределения
-
-                    - Выборка - 400 случайных чисел из распределения; по ней строятся гистограмма
-                                и блочная диаграмма
-
-                """)
+    with st.expander('Сокращения и обозначения'):
+        st.markdown(
+            '- **PDF** — функция плотности вероятности (Probability Density Function)\n'
+            '- **CDF** — функция распределения (Cumulative Distribution Function)\n'
+            '- **SF** — функция выживания (Survival Function), SF(x) = 1 − CDF(x)\n'
+            '- **P(X ≤ x)** — вероятность получить значение не больше x\n'
+            '- **Q1, Q2, Q3** — квартили распределения: значения, ниже которых лежит 25%, 50% и 75% вероятности\n'
+            '- **σ** — стандартное отклонение распределения. На графике закрашивается область среднее ± kσ, '
+            'в легенде указана вероятность попадания в неё. Доли 68%, 95% и 99.7% верны только '
+            'для нормального распределения\n'
+            '- **Выборка** — 400 случайных чисел из распределения; по ней строятся гистограмма '
+            'и блочная диаграмма'
+        )

@@ -40,11 +40,13 @@ def explore_app():
     return new_explore_app()
 
 
-def test_entry_point_opens_the_default_page():
+def test_entry_point_opens_the_home_page():
     at = AppTest.from_file(str(ROOT / 'streamlit_app.py'), default_timeout=300).run()
     assert_no_errors(at)
-    assert any('Distribution Fitting' in m.value for m in at.markdown)
-    assert [h.value for h in at.sidebar.header] == ['О нас']
+    assert [title.value for title in at.title] == ['Distribution Fitting']
+    # число распределений берется из той же базы, что и на странице распределений
+    assert int(at.metric[0].value) > 80
+    assert any('GitHub' in caption.value for caption in at.sidebar.caption)
 
 
 def test_fitting_page_opens():
