@@ -1,5 +1,219 @@
+"""
+Подбор закона распределения по данным пользователя.
+"""
+import hashlib
+import io
+import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import streamlit as st
+
+from UtilitySt import FitCodeGenerator, data_figure, fit_figure, fitting, qq_figure
+
+from .explore import load_distributions
+
+EXAMPLE_SOURCE = 'Пример данных'
+FILE_SOURCE = 'Загрузить файл'
+
+
+@st.cache_data(show_spinner=False, max_entries=2000)
+def cached_fit(name, data, fix_loc):
+    """
+    Подгонка одного распределения. Кэш по данным и настройкам: повторный запуск и смена настроек
+    отображения не пересчитывают уже подобранное.
+    """
+    return fitting.fit_distribution(name, data, fix_loc=fix_loc)
+
+
+def load_values():
+    """
+    Источник данных в боковой панели.
+    :return: значения для подбора или None, если файл еще не выбран
+    :raises fitting.DataError: если файл не читается или в нем нет чисел
+    """
+    source = st.radio('Источник данных', (EXAMPLE_SOURCE, FILE_SOURCE))
+    if source == EXAMPLE_SOURCE:
+        parameters = ', '.join(f'{param} = {value}' for param, value in fitting.EXAMPLE_PARAMETERS.items())
+        st.caption(f'500 случайных чисел из гамма-распределения ({parameters}).')
+        return fitting.example_data()
+
+    uploaded = st.file_uploader('Файл CSV или TXT', type=['csv', 'txt'],
+                                help='Один или несколько столбцов чисел. Разделитель столбцов определяется '
+                                     'автоматически, десятичным разделителем может быть точка или запятая.')
+    if uploaded is None:
+        return None
+    table = fitting.read_table(uploaded.getvalue())
+    columns = fitting.numeric_columns(table)
+    if not columns:
+        raise fitting.DataError(f'в файле нет столбца, где хотя бы {fitting.MIN_OBSERVATIONS} чисел')
+    column = st.selectbox('Столбец с данными', columns)
+    return table[column]
+
+
+def run_fits(names, sample, fix_loc):
+    """
+    Подбирает распределения по очереди и показывает прогресс.
+    """
+    progress = st.progress(0.0, text='Подбор распределений...')
+    results = []
+    for i, name in enumerate(names):
+        progress.progress(i / len(names), text=f'Подбор: {name} ({i + 1} из {len(names)})')
+        results.append(cached_fit(name, sample, fix_loc))
+    progress.empty()
+    return results
+
+
+def show_data(data, dropped, sample):
+    """
+    Сводка по данным и предупреждения о том, что влияет на подбор.
+    """
+    observations, removed, used = st.columns(3)
+    observations.metric('Наблюдений', len(data))
+    removed.metric('Отброшено значений', dropped, help='Пустые и нечисловые значения')
+    used.metric('Используется для подбора', len(sample))
+    if len(sample) < len(data):
+        st.info(f'Данных больше {fitting.MAX_FIT_OBSERVATIONS}: параметры подбираются по случайной подвыборке '
+                f'из {len(sample)} наблюдений.')
+    if fitting.looks_discrete(data):
+        st.warning('Все значения целые, и разных значений меньше 20. Похоже на дискретную величину: '
+                   'непрерывные распределения описывают такие данные плохо, а показатели качества подгонки '
+                   'будут вводить в заблуждение.')
+
+
+def show_results(results, sample, density, edges, top_n, plot_mode, distributions):
+    best = fitting.ranked(results)
+    skipped = [result for result in results if not result.ok]
+
+    st.subheader('Результаты')
+    if not best:
+        st.warning('Ни одно из выбранных распределений подобрать не удалось.')
+    else:
+        st.dataframe(fitting.results_table(results), hide_index=True)
+        st.caption(
+            'Таблица отсортирована по AIC: чем меньше, тем лучше; критерий штрафует за лишние параметры. '
+            'ΔAIC - отставание от лучшего: при ΔAIC меньше 2 модели практически неразличимы, больше 10 - явно хуже. '
+            'p-значение критерия Колмогорова - Смирнова завышено, потому что параметры оценены по тем же данным; '
+            'малое значение говорит против распределения, а большое ничего не доказывает. '
+            'SSE зависит от разбиения гистограммы и приведён для справки. '
+            'Лучшее из подобранных - не обязательно верное: выбор модели остаётся за вами.'
+        )
+    if skipped:
+        with st.expander(f'Не подобрано: {len(skipped)}'):
+            st.dataframe(pd.DataFrame({'Распределение': [result.name for result in skipped],
+                                       'Причина': [result.skipped for result in skipped]}), hide_index=True)
+    if not best:
+        return
+
+    st.subheader('График')
+    st.pyplot(fit_figure(density, edges, best[:top_n], plot_mode))
+    plt.close('all')
+
+    st.subheader('Проверка в хвостах')
+    name = st.selectbox('Распределение для Q-Q графика', [result.name for result in best])
+    chosen = next(result for result in best if result.name == name)
+    st.pyplot(qq_figure(sample, chosen, plot_mode))
+    plt.close('all')
+    st.caption('Точки на диагонали - распределение описывает данные и в центре, и в хвостах. '
+               'Уход точек от диагонали по краям показывает, что хвосты у данных тяжелее или легче.')
+    info = distributions[name]
+    parameters = ', '.join(f'{param} = {value:.4g}' for param, value in chosen.parameters.items())
+    st.info(f'**{info.fullname}**: {parameters}. [Документация SciPy]({info.url})')
+
+
+def show_export(results, sample, fix_loc):
+    best = fitting.ranked(results)
+    if not best:
+        return
+    st.subheader('Экспорт')
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    table, data_file, script = st.columns(3)
+    table.download_button('Таблица результатов (CSV)',
+                          data=fitting.results_table(results).to_csv(index=False).encode('utf-8-sig'),
+                          file_name=f'fit_results_{stamp}.csv', mime='text/csv', on_click='ignore')
+    buffer = io.StringIO()
+    np.savetxt(buffer, sample, fmt='%.10g')
+    data_file.download_button('Данные (data.csv)', data=buffer.getvalue(), file_name='data.csv',
+                              mime='text/csv', on_click='ignore')
+    code = FitCodeGenerator(best[0], fix_loc=fix_loc).get_generated_code()
+    script.download_button('Скрипт Python', data=code, file_name=f'fit_{best[0].name}_{stamp}.py',
+                           mime='text/x-python', on_click='ignore')
+    with st.expander(f'Скрипт для лучшего распределения ({best[0].name})'):
+        st.caption('Скрипт читает data.csv из той же папки и повторяет подгонку.')
+        st.code(code)
 
 
 def p_fitting():
-    st.info('Раздел в разработке.')
+    try:
+        distributions = load_distributions('continuous')
+    except Exception as e:
+        st.error(f'Не удалось загрузить список распределений из документации SciPy: {e}')
+        return
+
+    st.title('Подбор закона распределения')
+    st.write('Загрузите свои данные, выберите распределения, и приложение оценит их параметры методом '
+             'максимального правдоподобия и сравнит качество подгонки.')
+
+    st.sidebar.subheader("Подбор")
+    values, data_error = None, None
+    with st.sidebar.expander("Данные", expanded=True):
+        try:
+            values = load_values()
+        except fitting.DataError as e:
+            data_error = e
+
+    with st.sidebar.expander("Распределения", expanded=True):
+        available = list(distributions)
+        if st.toggle('Все распределения', value=False,
+                     help=f'Подобрать все {len(available)} распределений. Может занять несколько минут.'):
+            names = available
+        else:
+            names = st.multiselect('Распределения', available,
+                                   default=[name for name in fitting.DEFAULT_DISTRIBUTIONS if name in available])
+        fix_loc = st.toggle('Зафиксировать loc = 0', value=False,
+                            help='Не оценивать сдвиг. Имеет смысл для величин, которые по своей природе '
+                                 'начинаются с нуля: длительности, размеры, суммы.')
+        requested = st.button('Подобрать', type='primary')
+
+    with st.sidebar.expander("Настройка отображения"):
+        plot_mode = st.radio("Режим фигуры", ('Dark Mode', 'Light Mode'))
+        top_n = st.slider('Сколько лучших распределений показать на графике', min_value=1, max_value=8, value=3)
+
+    if data_error is not None:
+        st.error(f'С этими данными работать нельзя: {data_error}.')
+        return
+    if values is None:
+        st.info('Загрузите файл в боковой панели или выберите пример данных.')
+        return
+    try:
+        data, dropped = fitting.clean_data(values)
+    except fitting.DataError as e:
+        st.error(f'С этими данными работать нельзя: {e}.')
+        return
+
+    sample = fitting.fitting_sample(data)
+    density, edges = fitting.histogram(sample)
+    show_data(data, dropped, sample)
+
+    # результаты показываются только для тех данных и настроек, для которых нажата кнопка
+    signature = (hashlib.sha1(sample.tobytes()).hexdigest(), tuple(names), fix_loc)
+    if requested:
+        st.session_state.fit_signature = signature
+    if st.session_state.get('fit_signature') != signature or not names:
+        fig, _ = data_figure(density, edges, plot_mode)
+        st.pyplot(fig)
+        plt.close('all')
+        with st.expander('Описательная статистика данных'):
+            st.dataframe(fitting.data_statistics(data))
+        if names:
+            st.info('Выберите распределения в боковой панели и нажмите «Подобрать».')
+        else:
+            st.warning('Не выбрано ни одного распределения.')
+        return
+
+    results = run_fits(names, sample, fix_loc)
+    show_results(results, sample, density, edges, top_n, plot_mode, distributions)
+    show_export(results, sample, fix_loc)
+    with st.expander('Описательная статистика данных'):
+        st.dataframe(fitting.data_statistics(data))

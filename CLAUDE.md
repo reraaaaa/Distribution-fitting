@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Streamlit app for exploring `scipy.stats` continuous distributions interactively: parameter sliders, PDF/CDF/SF plots, a theory-versus-sample statistics table, and export of a standalone Python script. The "fitting" part of the name is not implemented yet — `app_pages/fitting.py` is a stub.
+A Streamlit app with two features. The explorer shows `scipy.stats` continuous distributions interactively: parameter sliders, PDF/CDF/SF plots, a theory-versus-sample statistics table, export of a standalone Python script. The fitting page fits distributions to the user's data by maximum likelihood and ranks them by AIC.
 
 UI strings, docstrings and comments are in Russian; keep new user-facing text in Russian.
 
@@ -33,7 +33,7 @@ ruff check .
 | --- | --- | --- |
 | Главная | `app_pages.introduction.p_introduction` | static text; `image1..6` are empty placeholders, skipped while empty |
 | База распределений | `app_pages.explore.p_explore` | the only working feature |
-| Подбор закона распределения | `app_pages.fitting.p_fitting` | stub showing an "in development" notice |
+| Подбор закона распределения | `app_pages.fitting.p_fitting` | fits distributions to uploaded data; written 2026-10-13, statistical review not finished (see PLAN_FITTING.md) |
 
 ### Layers
 
@@ -41,6 +41,7 @@ ruff check .
 - `UtilitySt.sampling` — pure computation, no Streamlit: `sample_distribution` (validates parameters, builds the curve grid `x`, draws the seeded sample `r`, returns them with the frozen `rv` as a `Sample`), `parameter_range` (slider bounds), `InvalidParameters`.
 - `UtilitySt.visual` — `Figure(settings, x, r, rv)` draws the matplotlib figure from a `DisplaySettings` dataclass.
 - `UtilitySt.code_generator` — `CodeGenerator(distribution, parameters, seed)` renders the exported script from a module-level template.
+- `UtilitySt.fitting` — pure computation for the fitting page: reading and cleaning data (`read_table`, `clean_data`), `fit_distribution` (never raises; a failed or rejected fit comes back as a `FitResult` with a reason in `skipped`), `results_table`. Fitted densities whose mass over the data range exceeds 1 are rejected (`probability_mass_over_data`): circular distributions such as `vonmises` and SciPy normalisation errors otherwise win on AIC with an inflated likelihood. Slow distributions are skipped by a time estimate rather than a timeout.
 - `app_pages.explore` — the Streamlit layer: widgets produce a parameter dict and a `DisplaySettings`, everything else is delegated to the layers above.
 
 Parameters travel as one ordered dict, `{*shape_params, 'loc', 'scale'}`, in SciPy's positional order. `sample_distribution` and `CodeGenerator` both unpack it as `*shapes, loc, scale`, so the order is load-bearing.

@@ -332,3 +332,81 @@ class Figure(object):
             ax.set_ylabel(self.ylabel())
             self.set_legend(ax)
         return fig
+
+
+FIT_LINE_COLORS = ['#fec44f', '#41b6c4', '#f768a1', '#7fcdbb', '#c994c7', '#fd8d3c', '#74a9cf', '#a1d99b']
+
+
+def apply_plot_mode(plot_mode):
+    """
+    Стиль matplotlib для темного или светлого режима.
+    :return: словарь цветов режима
+    """
+    if plot_mode == 'Dark Mode':
+        plt.style.use(['default', 'dark_background'])
+        plt.rcParams['figure.facecolor'] = 'black'
+        colors = Figure.DARK_MODE_COLORS
+    elif plot_mode == 'Light Mode':
+        plt.style.use(['default', 'classic'])
+        plt.rcParams['figure.facecolor'] = 'white'
+        colors = Figure.LIGHT_MODE_COLORS
+    else:
+        raise ValueError("Invalid mode. Expected 'Dark Mode' or 'Light Mode'")
+    plt.rcParams.update(Figure.global_rc_params)
+    return colors
+
+
+def data_figure(density, edges, plot_mode):
+    """
+    Гистограмма плотности данных.
+    """
+    colors = apply_plot_mode(plot_mode)
+    fig, ax = plt.subplots(1, 1)
+    ax.stairs(density, edges, color=colors['hist_edge_color'], linewidth=1, label='Данные')
+    ax.set_xlabel('X значение')
+    ax.set_ylabel('Плотность')
+    return fig, ax
+
+
+def fit_figure(density, edges, results, plot_mode):
+    """
+    Гистограмма данных и плотности подобранных распределений.
+    :param results: подобранные FitResult, от лучшего к худшему
+    """
+    fig, ax = data_figure(density, edges, plot_mode)
+    x = np.linspace(edges[0], edges[-1], 800)
+    for result, color in zip(results, FIT_LINE_COLORS, strict=False):
+        with np.errstate(all='ignore'):
+            pdf = result.frozen().pdf(x)
+        ax.plot(x, pdf, color=color, lw=1.5, label=result.name)
+    # бесконечная плотность на краю носителя не должна сжимать остальной график
+    ax.set_ylim(0, 1.6 * density.max())
+    legend = ax.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left", mode="expand", borderaxespad=0, ncol=3)
+    legend.get_frame().set_edgecolor("#525252")
+    return fig
+
+
+def qq_figure(data, result, plot_mode):
+    """
+    Q-Q график: квантили данных против квантилей подобранного распределения.
+    Точки на диагонали означают, что распределение описывает данные и в хвостах.
+    """
+    colors = apply_plot_mode(plot_mode)
+    observed = np.sort(data)
+    probabilities = (np.arange(1, len(observed) + 1) - 0.5) / len(observed)
+    with np.errstate(all='ignore'):
+        theoretical = result.frozen().ppf(probabilities)
+    finite = np.isfinite(theoretical)
+    theoretical, observed = theoretical[finite], observed[finite]
+
+    fig, ax = plt.subplots(1, 1)
+    ax.plot(theoretical, observed, linestyle='none', marker='o', markersize=3,
+            color=colors['pdf_line_color'], alpha=0.6, label='Данные')
+    low, high = min(theoretical.min(), observed.min()), max(theoretical.max(), observed.max())
+    ax.plot([low, high], [low, high], color=colors['cdf_line_color'], lw=1, linestyle='--',
+            label='Идеальное совпадение')
+    ax.set_xlabel(f'Квантили распределения {result.name}')
+    ax.set_ylabel('Квантили данных')
+    legend = ax.legend(loc='upper left')
+    legend.get_frame().set_edgecolor("#525252")
+    return fig

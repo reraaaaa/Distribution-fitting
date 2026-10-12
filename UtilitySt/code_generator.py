@@ -109,3 +109,70 @@ class CodeGenerator(object):
                                size=SAMPLE_SIZE,
                                assignments='\n'.join(assignments),
                                arguments=', '.join(arguments))
+
+
+FIT_TEMPLATE = """\
+# -*- coding: utf-8 -*-
+# {timestamp}
+# ---
+# Подбор параметров распределения {distribution} методом максимального правдоподобия.
+# Рядом со скриптом должен лежать файл {data_file}: одно число в строке.
+
+import matplotlib.pyplot as plt  # v{matplotlib_version}
+import numpy as np  # v{numpy_version}
+from scipy import stats  # v{scipy_version}
+
+data = np.loadtxt('{data_file}')
+
+# Оценка параметров (в порядке SciPy: {parameter_names})
+parameters = stats.{distribution}.fit(data{fit_arguments})
+rv = stats.{distribution}(*parameters)
+for name, value in zip({parameter_list}, parameters):
+    print(f'{{name}} = {{value:.6g}}')
+
+# Показатели качества подгонки
+log_likelihood = np.sum(rv.logpdf(data))
+n_free = {n_free}
+print(f'ln L = {{log_likelihood:.3f}}')
+print(f'AIC = {{2 * n_free - 2 * log_likelihood:.3f}}')
+print(f'BIC = {{n_free * np.log(len(data)) - 2 * log_likelihood:.3f}}')
+# p-значение завышено: параметры оценены по тем же данным
+print(stats.kstest(data, rv.cdf))
+
+# Гистограмма данных и подобранная плотность
+x = np.linspace(data.min(), data.max(), 800)
+fig, ax = plt.subplots()
+ax.hist(data, bins='fd', density=True, color='lightgrey', edgecolor='k', label='Данные')
+ax.plot(x, rv.pdf(x), color='#3182bd', lw=2, label='{distribution}')
+ax.set_xlabel('X значение')
+ax.set_ylabel('Плотность')
+ax.legend()
+
+plt.show()
+"""
+
+
+class FitCodeGenerator(object):
+    """
+    Генерирует скрипт, который повторяет подгонку распределения к данным из файла.
+    :param result: FitResult подобранного распределения
+    :param fix_loc: был ли зафиксирован loc = 0
+    :param data_file: имя файла с данными, который скачивается вместе со скриптом
+    """
+    def __init__(self, result, fix_loc=False, data_file='data.csv'):
+        self.result = result
+        self.fix_loc = fix_loc
+        self.data_file = data_file
+
+    def get_generated_code(self):
+        names = list(self.result.parameters)
+        return FIT_TEMPLATE.format(timestamp=time.strftime("%Y%m%d_%H%M%S"),
+                                   matplotlib_version=matplotlib.__version__,
+                                   numpy_version=numpy.__version__,
+                                   scipy_version=scipy.__version__,
+                                   distribution=self.result.name,
+                                   data_file=self.data_file,
+                                   parameter_names=', '.join(names),
+                                   parameter_list=repr(names),
+                                   fit_arguments=', floc=0.0' if self.fix_loc else '',
+                                   n_free=self.result.n_free)
