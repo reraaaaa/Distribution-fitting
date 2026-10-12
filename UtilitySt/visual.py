@@ -106,11 +106,11 @@ class Figure(object):
         """ rcParameters for light and dark mode """
 
         if plot_mode == 'Dark Mode':
-            plt.style.use('dark_background')
+            plt.style.use(['default', 'dark_background'])
             plt.rcParams['figure.facecolor'] = 'black'
 
         elif plot_mode == 'Light Mode':
-            plt.style.use('classic')
+            plt.style.use(['default', 'classic'])
             plt.rcParams['figure.facecolor'] = 'white'
         else:
             raise ValueError("Invalid mode. Expected 'Dark Mode' or 'Light Mode'")

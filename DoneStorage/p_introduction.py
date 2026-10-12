@@ -12,6 +12,12 @@ image4 = ""
 image5 = ""
 image6 = ""
 
+def show_image(image):
+    # Пока скриншоты не добавлены, пустые заглушки не показываем
+    if image:
+        st.image(image, use_column_width=True)
+
+
 def p_introduction():
     # Пробел, чтобы текст поля «О программе» был ниже
     st.sidebar.write("")
@@ -48,7 +54,7 @@ def p_introduction():
     st.error('База распределений')
     feature1, feature2 = st.columns([0.5, 0.4])
     with feature1:
-        st.image(image1, use_column_width=True)
+        show_image(image1)
     with feature2:
         st.warning('Select Distribution')
         st.info("""
@@ -61,7 +67,7 @@ def p_introduction():
 
     feature3, feature4 = st.columns([0.6, 0.4])
     with feature3:
-        st.image(image2, use_column_width=True)
+        show_image(image2)
     with feature4:
         st.warning('Tweak Display')
         st.info("""
@@ -74,7 +80,7 @@ def p_introduction():
 
     feature5, feature6 = st.columns([0.6, 0.4])
     with feature5:
-        st.image(image3, use_column_width=True)
+        show_image(image3)
     with feature6:
         st.warning('Export')
         st.info("""
@@ -94,7 +100,7 @@ def p_introduction():
                 - Plot your data with or without basic statistical information.
                 """)
     with feature8:
-        st.image(image4, use_column_width=True)
+        show_image(image4)
 
     make_line()
 
@@ -107,7 +113,7 @@ def p_introduction():
                 - Fit distribution(s) to your data
                 """)
     with feature10:
-        st.image(image5, use_column_width=True)
+        show_image(image5)
 
     make_line()
 
@@ -120,7 +126,7 @@ def p_introduction():
                 - Generate **Python code** with best fit distribution 
                 """)
     with feature11:
-        st.image(image6, use_column_width=True)
+        show_image(image6)
 
     make_line()
 

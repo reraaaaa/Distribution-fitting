@@ -6,7 +6,7 @@ Aauthor: D-one
 from bs4 import BeautifulSoup
 import requests
 from scipy import stats
-import pandas as pd
+import scipy.stats._distr_params  # noqa: F401 - значения параметров по умолчанию
 
 
 class DistributionParser:
@@ -55,82 +55,85 @@ class DistributionParser:
 
     def _get_soup(self):
         try:
-            response = requests.get(self.BASE_URL)
+            response = requests.get(self.BASE_URL, timeout=30)
             response.raise_for_status()
         except requests.RequestException as e:
-            print(f"Failed to get URL {self.BASE_URL}: {e}")
-            return None
+            raise ConnectionError(f"Failed to get URL {self.BASE_URL}: {e}") from e
         return BeautifulSoup(response.text, "html.parser")
+
+    def _is_continuous(self):
+        return self.DISTRIBUTION_ID == "continuous-distributions-in-scipy-stats"
+
+    def _name_from_href(self, href):
+        """
+        :return: 'continuous_alpha.html' -> 'alpha'
+        """
+        prefix = 'continuous_' if self._is_continuous() else 'discrete_'
+        return href.replace(prefix, '').replace('.html', '')
 
     def _fetch_distributions_and_hrefs(self):
         """
         :return: {'Alpha Distribution': 'continuous_alpha.html', 'Anglit Distribution': 'continuous_anglit.html',...}
         """
         div = self.soup.find(id=self.DISTRIBUTION_ID)
+        if div is None:
+            raise ValueError(f"Section '{self.DISTRIBUTION_ID}' not found on {self.BASE_URL}")
         lis = div.find_all("li", {"class": "toctree-l1"})
         distributions_and_hrefs = {}
 
         for li in lis:
             link = li.find(class_='reference internal', href=True)
             if link and not link['href'].startswith('#'):
-                distributions_and_hrefs[li.text] = link['href']
-
-        if self.DISTRIBUTION_ID == "continuous-distributions-in-scipy-stats":
-            distributions_and_hrefs.pop('Jones and Faddy Skew-T Distribution')
-        else:
-            distributions_and_hrefs.pop('Beta-Negative Binomial Distribution')
+                # Страница devdocs может описывать распределения, которых нет в установленной версии SciPy
+                if hasattr(stats, self._name_from_href(link['href'])):
+                    distributions_and_hrefs[li.text.strip()] = link['href']
         return distributions_and_hrefs
 
     def _fetch_distributions(self):
         """
         :return: ['Alpha Distribution', 'Anglit Distribution',...
         """
-        distributions_and_hrefs = self._fetch_distributions_and_hrefs()
-        distributions = list(distributions_and_hrefs.keys())
-        return distributions
+        return list(self.distributions_and_hrefs.keys())
 
     def _extract_distribution_names(self):
         """
         :return: ['alpha', 'anglit', 'arcsine',...
         """
-        hrefs = list(self._fetch_distributions_and_hrefs().values())
-        if self.DISTRIBUTION_ID == "continuous-distributions-in-scipy-stats":
-            names = [name.replace('continuous_', '').replace('.html', '') for name in hrefs]
-        else:
-            names = [name.replace('discrete_', '').replace('.html', '') for name in hrefs]
-        return names
+        return [self._name_from_href(href) for href in self.distributions_and_hrefs.values()]
 
     def _generate_distribution_urls(self):
         """
         :return: ['https://scipy.github.io/devdocs/tutorial/stats/continuous_alpha.html',...
         """
-        hrefs = list(self._fetch_distributions_and_hrefs().values())
-        urls = sorted(set(f'https://scipy.github.io/devdocs/tutorial/stats/{href}' for href in hrefs))
-        return urls
+        return [f'https://scipy.github.io/devdocs/tutorial/stats/{href}'
+                for href in self.distributions_and_hrefs.values()]
 
     def _fetch_distribution_docstrings(self):
         """
         :return: info docs text...
         """
-        names = self._extract_distribution_names()
-        docstrings = [getattr(stats, name).__doc__ for name in names]
-        return docstrings
+        return [getattr(stats, name).__doc__ or '' for name in self.names]
 
     def _fetch_dictionaries_stat(self):
         """
         :return: ['stats.alpha', 'stats.anglit', 'stats.arcsine',...
         """
-        names = self._extract_distribution_names()
-        stat = {name: 'stats.' + name for name in names}
-        return stat
+        return {name: 'stats.' + name for name in self.names}
 
     def _fetch_distribution_functions(self):
         """
+        Одно уравнение на распределение: первый блок math:: из строки документации ('' если блока нет).
         :return: [f(x, a) = \\frac{1}{x^2 \\Phi(a) \\sqrt{2\\pi}},...
         """
-        docstrings = self._fetch_distribution_docstrings()
-        equations = [''.join(docstring.split('\n')[i + 2:i + 4]) for docstring in docstrings for i, line in
-                     enumerate(docstring.split('\n')) if 'math::' in line]
+        equations = []
+        for docstring in self.docstrings:
+            lines = docstring.split('\n')
+            equation = ''
+            for i, line in enumerate(lines):
+                if 'math::' in line:
+                    equation = ''.join(lines[i + 2:i + 4])
+                    break
+            equations.append(equation)
         return equations
 
     def _fetch_distribution_parameters(self):
@@ -138,35 +141,34 @@ class DistributionParser:
         :return: [['a', 'loc', 'scale'],...
         :return: [[3.570477051665046, 0.0, 1.0], [0.0, 1.0],...
         """
-        names = self._extract_distribution_names()
-        parse_params = stats._distr_params.distcont
-        df = pd.DataFrame(parse_params, columns=['dist', 'param'])
-        df2 = pd.DataFrame(names, columns=['dist'])
-        inner_join = pd.merge(df2, df, on='dist', how='left')
-        inner_join = inner_join.drop_duplicates(subset=['dist'])
-        inner_join = inner_join.values.tolist()
+        if self._is_continuous():
+            parse_params = stats._distr_params.distcont
+            # loc, scale
+            tail_names, tail_values = ['loc', 'scale'], [0.00, 1.00]
+        else:
+            parse_params = stats._distr_params.distdiscrete
+            # у дискретных распределений нет scale
+            tail_names, tail_values = ['loc'], [0.00]
+
+        default_shapes = {}
+        for dist_name, params in parse_params:
+            if isinstance(dist_name, str):
+                default_shapes.setdefault(dist_name, params)
 
         all_params_names = []
         all_params = []
-        for i, params in inner_join:
-            dist = getattr(stats, i)
-            p_names = ['loc', 'scale']
-            if dist.shapes:
-                p_names = [sh.strip() for sh in dist.shapes.split(',')] + ['loc', 'scale']
-            all_params_names.append(p_names)
-            loc, scale = 0.00, 1.00
-            if self.DISTRIBUTION_ID == "continuous-distributions-in-scipy-stats":
-                params = list(params) + [loc, scale]
-            else:
-                params = [params, loc, scale]
-            all_params.append(params)
+        for name in self.names:
+            dist = getattr(stats, name)
+            p_names = [sh.strip() for sh in dist.shapes.split(',')] if dist.shapes else []
+            all_params_names.append(p_names + tail_names)
+            all_params.append(list(default_shapes.get(name, ())) + tail_values)
         return all_params_names, all_params
 
     def _generate_distribution_dictionaries(self):
         """
         :return: all dictionaries
         """
-        all_params_names, all_params = self._fetch_distribution_parameters()
+        all_params_names, all_params = self.parameters
         return {
             'doc_dic': {distribution: doc for distribution, doc in zip(self.names, self.docstrings)},
             'functions_dic': {distribution: function for distribution, function in zip(self.names, self.equations)},

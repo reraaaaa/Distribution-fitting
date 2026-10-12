@@ -17,8 +17,20 @@ import UtilitySt.visual as fg
 import UtilitySt.code_generator as cg
 
 
+@st.cache_resource(show_spinner='Загрузка списка распределений из документации SciPy...')
+def load_parser(type_rv):
+    """
+    Парсер ходит в сеть, поэтому создаем его один раз, а не при каждом перезапуске скрипта.
+    """
+    return dps.DistributionParser(type_rv=type_rv)
+
+
 def p_explore():
-    s = dps.DistributionParser(type_rv='continuous')
+    try:
+        s = load_parser('continuous')
+    except Exception as e:
+        st.error(f'Не удалось загрузить список распределений из документации SciPy: {e}')
+        return
     dictionaries = s.get_dictionaries()
 
     doc_dic, functions_dic, fullname_dic, parameters_dic, url_dic = dictionaries.values()
@@ -44,10 +56,15 @@ def p_explore():
         :param step_value:
         :return:
         """
+        # loc и параметры с неположительным значением по умолчанию могут быть отрицательными
+        if param != 'loc' and parameter_value >= 0.01:
+            min_value = 0.01
+        else:
+            min_value = min(-10.00, 2 * parameter_value)
         slider_i = st.slider('Значение по умолчанию: ' + '{}'.format(param) + ' = ' + f'{parameter_value}',
-                             min_value=0.01,
+                             min_value=min_value,
                              value=float("{:.2f}".format(parameter_value)),
-                             max_value=10.00,
+                             max_value=max(10.00, 2 * parameter_value),
                              step=step_value)
         return slider_i
 
@@ -149,7 +166,7 @@ def p_explore():
 
     # Получение уравнений для отображения. Из-за нескольких различных форматов
     # уравнений, чтобы они правильно отображались в латексном режиме, используем уценку:
-    if select_distribution in functions_dic.keys():
+    if functions_dic.get(select_distribution):
         st.latex(f'{functions_dic[select_distribution]}')
 
     # Дополнительно, поскольку я заметил, что вычисление levy_stable занимает много времени
@@ -166,47 +183,46 @@ def p_explore():
         # Поставьте галочки для PDF и Shine в столбик. Если PDF имеет значение True (вкл.):
         # Shine может быть True/False (вкл./выкл.).
         # Если флажок PDF установлен False, снимите флажок Shine.
-        select_pdf, select_pdf_shine = st.columns(2)
-        with select_pdf:
+        pdf_column, pdf_shine_column = st.columns(2)
+        with pdf_column:
             select_pdf = st.checkbox('PDF', value=True)
-            if select_pdf == False:
-                select_pdf_shine = st.empty()
-            else:
-                with select_pdf_shine:
-                    select_pdf_shine = st.checkbox('Shine', value=True)
+        select_pdf_shine = False
+        if select_pdf:
+            with pdf_shine_column:
+                select_pdf_shine = st.checkbox('Shine', value=True)
 
         # Та же функциональность, что и для PDF выше
-        select_cdf, select_cdf_shine = st.columns(2)
-        with select_cdf:
+        cdf_column, cdf_shine_column = st.columns(2)
+        with cdf_column:
             select_cdf = st.checkbox('CDF', value=False)
-            if select_cdf == False:
-                select_cdf_shine = st.empty()
-            else:
-                with select_cdf_shine:
-                    select_cdf_shine = st.checkbox('Shine ', value=True)
+        select_cdf_shine = False
+        if select_cdf:
+            with cdf_shine_column:
+                select_cdf_shine = st.checkbox('Shine ', value=True)
 
         # Показать/скрыть и исследовать
-        if select_cdf == False:
-            select_mark_P = st.empty()
-            x_cdf = st.empty()
-        else:
+        select_mark_P = False
+        x_cdf = None
+        if select_cdf:
             select_mark_P = st.checkbox('P(X<=x)', value=False)
             if select_mark_P:
+                # Границы берем из x1, а не из случайной выборки r1: иначе ползунок
+                # сбрасывался бы при каждом перезапуске скрипта
+                x_min, x_max = round(float(x1[0]), 2), round(float(x1[-1]), 2)
                 x_cdf = st.slider('Установите значение x, чтобы получить: (x, P(X<=x))',
-                                  min_value=round(min(r1), 2),
-                                  value=0.5,
-                                  max_value=round(max(r1), 2),
+                                  min_value=x_min,
+                                  value=min(max(round(float(rv1.median()), 2), x_min), x_max),
+                                  max_value=x_max,
                                   step=0.10)
 
         # Та же функциональность, что и для PDF/CDF выше
-        select_sf, select_sf_shine = st.columns(2)
-        with select_sf:
+        sf_column, sf_shine_column = st.columns(2)
+        with sf_column:
             select_sf = st.checkbox('SF', value=False)
-            if select_sf == False:
-                select_sf_shine = st.empty()
-            else:
-                with select_sf_shine:
-                    select_sf_shine = st.checkbox('Shine   ', value=True)
+        select_sf_shine = False
+        if select_sf:
+            with sf_shine_column:
+                select_sf_shine = st.checkbox('Shine   ', value=True)
 
         # Показать/скрыть блочную диаграмму
         select_boxplot = st.checkbox('Блочная диаграмма', value=True)
@@ -289,6 +305,8 @@ def p_explore():
 
         # Разобрать в Streamlit
         st.pyplot(fig.figure_display_control())
+        # Иначе фигуры накапливаются в памяти при каждом перезапуске скрипта
+        plt.close('all')
 
     # Output statistics into a Table
     def df_generate_statistics(r1):
@@ -305,12 +323,7 @@ def p_explore():
         # Разобрать в Streamlit
         st.dataframe(stats.rename(columns={0: 'Value'}))
 
-    # Радиокнопки, управляющие темным/светлым режимом
-    if plot_mode == 'Dark Mode':
-        port_to_streamlit()
-
-    if plot_mode == 'Light Mode':
-        port_to_streamlit()
+    port_to_streamlit()
 
     # Streamlit вкл/выкл, чтобы показать/скрыть статистическую информацию
     if df_stat:
@@ -331,8 +344,8 @@ def p_explore():
 
             names = []
             ps = []
+            param_name = [sh.strip() for sh in getattr(stats, select_distribution).shapes.split(',')]
             for i, param in enumerate(sliders_params[0:-2]):
-                param_name = s.get_dictionaries_stat().get(f'{select_distribution}').shapes.split(', ')
                 name = f'{param_name[i]}'
                 p = f'{param_name[i]}={param}'
 

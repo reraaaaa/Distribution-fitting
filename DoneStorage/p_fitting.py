@@ -1,2 +1,5 @@
+import streamlit as st
+
+
 def p_fitting():
-    return None
+    st.info('Раздел в разработке.')

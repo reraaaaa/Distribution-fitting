@@ -1,3 +1,4 @@
+import textwrap
 import time
 
 
@@ -16,6 +17,9 @@ class CodeGenerator(object):
         self.a = a
 
     def get_generated_code(self):
+        # Параметры формы приходят по одному на строку: выравниваем их по отступу шаблона,
+        # чтобы textwrap.dedent смог убрать отступ у всего скрипта
+        a = self.a.replace('\n', '\n' + ' ' * 8)
 
         generate_code = f"""
         # -*- coding: utf-8 -*-
@@ -32,7 +36,7 @@ class CodeGenerator(object):
         # Function parameters
         {self.scale}
         {self.loc}
-        {self.a}              
+        {a}
         
         # Генерировать равномерно числа в течение указанного интервала
         size = 400
@@ -93,4 +97,4 @@ class CodeGenerator(object):
         plt.show()
         
         """
-        return generate_code
+        return textwrap.dedent(generate_code).strip() + '\n'

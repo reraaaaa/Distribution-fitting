@@ -3,6 +3,8 @@ Created on 21/12/2021
 Author: D-one
 """
 
+import os
+
 import numpy as np
 import streamlit as st
 
@@ -10,7 +12,7 @@ from DoneStorage.p_explore_2 import p_explore
 from DoneStorage.p_fitting import p_fitting
 from DoneStorage.p_introduction import p_introduction
 
-LOGO_IMAGE = "https://raw.githubusercontent.com/reraaaaa/Distribution-fitting/master/images/logo_w.png?token=GHSAT0AAAAAABQQROWMSV5LDKAYXT4KAEYAYO7CYJQ"
+LOGO_IMAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images", "logo_w.png")
 
 st.set_page_config(page_title='Distribution-Fitting')
 
