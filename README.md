@@ -6,7 +6,9 @@
 
 Выберите распределение, двигайте параметры и смотрите, как меняются плотность, функция распределения и выборка.
 
-[![Открыть в Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://distribution-fitting.streamlit.app)
+<a href="https://distribution-fitting.streamlit.app">
+  <img src="https://img.shields.io/badge/Открыть_приложение-distribution--fitting.streamlit.app-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Открыть приложение: distribution-fitting.streamlit.app">
+</a>
 
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.65-FF4B4B?logo=streamlit&logoColor=white)
@@ -37,7 +39,7 @@
 
 ### В браузере
 
-Нажмите на значок **Open in Streamlit** выше.
+Откройте <https://distribution-fitting.streamlit.app> или нажмите на красную кнопку вверху страницы. Ставить ничего не нужно.
 
 ### Локально
 
