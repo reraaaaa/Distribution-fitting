@@ -57,3 +57,30 @@ def test_network_failure_is_reported(monkeypatch):
     monkeypatch.setattr('ParsDistributions.parser.requests.get', broken_get)
     with pytest.raises(ConnectionError, match='Failed to get URL'):
         DistributionParser('continuous')
+
+
+def test_equation_is_the_whole_density_formula(distributions):
+    # у t раньше показывалась только нормирующая константа
+    assert r'(1+x^2/\nu)^{-(\nu+1)/2}' in distributions['t'].equation
+    # у genextreme есть частный случай c = 0 и общий; нужен общий
+    assert distributions['genextreme'].equation.startswith('f(x, c)')
+    # определение статистики D_n - не плотность
+    assert distributions['ksone'].equation == ''
+    assert sum(bool(info.equation) for info in distributions.values()) >= 80
+
+
+def test_equations_are_balanced_latex(distributions):
+    for name, info in distributions.items():
+        equation = info.equation
+        assert equation.count('{') == equation.count('}'), name
+        assert equation.count(r'\left') == equation.count(r'\right'), name
+        assert equation.count(r'\begin') == equation.count(r'\end'), name
+        assert ':math:' not in equation, name
+
+
+def test_multiline_equation_is_wrapped_for_rendering(distributions):
+    equation = distributions['laplace_asymmetric'].equation
+    assert equation.startswith(r'\begin{aligned}') and equation.endswith(r'\end{aligned}')
+    assert not equation.removesuffix(r'\end{aligned}').rstrip().endswith('\\\\')
+    # формулы без выравнивания не трогаем
+    assert distributions['norm'].equation.startswith('f(x)')

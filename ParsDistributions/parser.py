@@ -3,6 +3,7 @@
 Created on 29/12/2023
 Aauthor: D-one
 """
+import re
 from dataclasses import dataclass
 
 import requests
@@ -112,15 +113,44 @@ class DistributionParser:
         return distributions
 
     @staticmethod
-    def _extract_equation(docstring):
+    def _math_blocks(docstring):
         """
-        :return: первый блок math:: из строки документации, например f(x, a) = \\frac{1}{x^2 \\Phi(a) \\sqrt{2\\pi}}
+        :return: содержимое всех блоков ".. math::" строки документации, каждый блок одной строкой
         """
         lines = docstring.split('\n')
-        for i, line in enumerate(lines):
-            if 'math::' in line:
-                return ''.join(lines[i + 2:i + 4])
-        return ''
+        blocks = []
+        i = 0
+        while i < len(lines):
+            directive = re.match(r'^(\s*)\.\. math::\s*(.*)$', lines[i])
+            i += 1
+            if not directive:
+                continue
+            indent = len(directive.group(1))
+            body = [directive.group(2)] if directive.group(2) else []
+            # блок - это все строки с отступом больше, чем у директивы
+            while i < len(lines) and (not lines[i].strip() or len(lines[i]) - len(lines[i].lstrip()) > indent):
+                if lines[i].strip():
+                    body.append(lines[i].strip())
+                i += 1
+            blocks.append(' '.join(body))
+        return blocks
+
+    @classmethod
+    def _extract_equation(cls, docstring):
+        """
+        Формула плотности: блок math::, который начинается с "f(". Если таких блоков несколько (частный случай
+        и общий), берется тот, у которого больше аргументов. Определения статистик (D_n = ...) плотностью
+        не являются и пропускаются.
+        :return: например f(x, a) = \\frac{1}{x^2 \\Phi(a) \\sqrt{2\\pi}} или '', если формулы плотности нет
+        """
+        densities = [block for block in cls._math_blocks(docstring) if re.match(r'f\s*\(', block)]
+        if not densities:
+            return ''
+        equation = max(densities, key=lambda block: block[:block.index(')')].count(','))
+        # многострочная формула с выравниванием (&, \\\\) рендерится только внутри окружения
+        if ('&' in equation or '\\\\' in equation) and not equation.startswith('\\begin'):
+            equation = '\\begin{aligned}' + equation.rstrip('\\ ') + '\\end{aligned}'
+        return equation
 
     def _default_parameters(self, name, default_shapes):
         """

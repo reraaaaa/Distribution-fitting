@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
-from scipy.stats.mstats import mquantiles
+import numpy as np
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,6 @@ class Figure(object):
     """
 
     xlabel = 'X значение'
-    ylabel = 'Плотность'
 
     global_rc_params = {
         'legend.fontsize': 12,
@@ -92,6 +91,7 @@ class Figure(object):
         self.x = x
         self.r = r
         self.rv = rv
+        self._mean_std = None
         self.colors = self.get_color_scheme(settings.plot_mode)
         self.display_mode(settings.plot_mode)
 
@@ -198,15 +198,13 @@ class Figure(object):
         ax.set_ylim(0.9, 1.1)
 
     def quantiles(self, ax):
-        """ Quantiles and their plot properties. """
-
-        # Compute
-        quant = mquantiles(self.r)
+        """
+        Квартили распределения (не выборки): вертикальные линии до кривой PDF.
+        """
+        quant = self.rv.ppf([0.25, 0.50, 0.75])
 
         for idx, q in enumerate(self.settings.quantiles, start=1):
             if q:
-                """ Compute the quantiles and set them as vertical lines. """
-                # Plot
                 ax.vlines(quant[idx - 1], ymin=0, ymax=self.rv.pdf(quant[idx - 1]),
                           color=self.colors[f'quant{idx}_color'],
                           dashes=self.quantile_dashes,
@@ -218,25 +216,42 @@ class Figure(object):
                         ha='center', fontsize=10,
                         color=self.colors[f'quant{idx}_color'])
 
+    def sigma_is_defined(self):
+        """
+        У распределений с тяжелыми хвостами (cauchy, levy) среднее или дисперсия не определены либо бесконечны.
+        """
+        return bool(np.all(np.isfinite(self.mean_std())))
+
+    def mean_std(self):
+        """
+        Среднее и стандартное отклонение распределения. У части распределений SciPy считает их
+        численным интегрированием за секунды, поэтому считаем один раз.
+        """
+        if self._mean_std is None:
+            with np.errstate(all='ignore'):
+                self._mean_std = (float(self.rv.mean()), float(self.rv.std()))
+        return self._mean_std
+
     def sigmas(self, ax):
         """
-        Сигмы и их сюжетные свойства.
+        Закрашивает область среднее ± k·σ распределения и подписывает вероятность попадания в нее:
+        68/95/99.7% верны только для нормального распределения.
         :param ax:
         :return:
         """
+        if not self.sigma_is_defined():
+            return
+        mean, std = self.mean_std()
         for idx, s in enumerate(self.settings.sigmas, start=1):
             if s:
-                """
-                Compute standard deviation and the mean.
-                Shade between: mean-std and mean+std which shows sigma.
-                """
-                x01 = idx * self.r.std()
+                low, high = mean - idx * std, mean + idx * std
+                probability = self.rv.cdf(high) - self.rv.cdf(low)
                 # Выберите только значения x в диапазоне сигм.
-                x1 = self.x[(self.x > (self.r.mean() - x01)) & (self.x < (x01 + self.r.mean()))]
+                x1 = self.x[(self.x > low) & (self.x < high)]
                 # Это затенит 1/2/3 сигмы, ограничивая y на границе PDF.
                 ax.fill_between(x1, self.rv.pdf(x1), 0,
                                 color=self.colors['pdf_line_color'],
-                                alpha=0.2)
+                                alpha=0.2, label=f'{idx}σ: P = {probability:.3f}')
 
     def histogram(self, ax):
         """ Histogram properties """
@@ -244,7 +259,7 @@ class Figure(object):
         ax.hist(self.r, density=True, bins=20,
                 edgecolor=self.colors['hist_edge_color'],
                 fill=False,  # hatch='x',
-                linewidth=1, alpha=1, label='Sample distribution')
+                linewidth=1, alpha=1, label='Выборка')
 
     def setup_figure(self, fig_type):
         if fig_type == 'dual':
@@ -270,6 +285,17 @@ class Figure(object):
                            borderaxespad=0,
                            ncol=3)
         legend.get_frame().set_edgecolor("#525252")
+
+    def ylabel(self):
+        """
+        PDF и гистограмма - плотность, CDF и SF - вероятность.
+        """
+        s = self.settings
+        density = s.pdf or s.histogram
+        probability = s.cdf or s.sf
+        if density and probability:
+            return 'Плотность / вероятность'
+        return 'Вероятность' if probability else 'Плотность'
 
     def empty_figure(self):
         fig, ax = self.setup_figure('single')
@@ -298,11 +324,11 @@ class Figure(object):
             self.set_legend(ax[0])
             self.boxplot(ax=ax[1])
             ax[1].set_xlim(ax[0].get_xlim())
-            ax[0].set_ylabel(self.ylabel)
+            ax[0].set_ylabel(self.ylabel())
         else:
             fig, ax = self.setup_figure('single')
             self.plot_lines(ax)
             ax.set_xlabel(self.xlabel)
-            ax.set_ylabel(self.ylabel)
+            ax.set_ylabel(self.ylabel())
             self.set_legend(ax)
         return fig

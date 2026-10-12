@@ -1,5 +1,6 @@
 """Прогон приложения без браузера через streamlit.testing."""
 import matplotlib.pyplot as plt
+import numpy as np
 import pytest
 from streamlit.testing.v1 import AppTest
 
@@ -111,3 +112,82 @@ def test_display_toggles(name):
         action(at)
         at.run()
         assert not at.exception, (label, [str(e.value) for e in at.exception])
+
+
+def select(at, name):
+    widget(at.selectbox, SELECT_LABEL).select(name).run()
+    return at
+
+
+def test_invalid_parameters_show_a_warning_instead_of_crashing():
+    at = select(new_explore_app(), 'truncnorm')
+    # a должен быть меньше b
+    first_slider(at, ': a =').set_value(first_slider(at, ': a =').max).run()
+    assert not at.exception
+    assert any('построить нельзя' in w.value for w in at.warning)
+    # настройки отображения остаются на месте
+    assert widget(at.checkbox, 'PDF').value is True
+
+
+def test_integer_parameter_slider_moves_without_crashing():
+    at = select(new_explore_app(), 'ksone')
+    slider = first_slider(at, ': n =')
+    assert isinstance(slider.value, int)
+    slider.set_value(20).run()
+    assert not at.exception and not at.warning
+
+
+def test_statistics_show_theory_next_to_the_sample():
+    at = select(new_explore_app(), 'cauchy')
+    widget(at.checkbox, 'Да').check().run()
+    assert_no_errors(at)
+    table = at.dataframe[0].value
+    assert list(table.columns) == ['Распределение', 'Выборка, n=400']
+    # у распределения Коши среднее не определено, а по выборке число всегда получится
+    assert not np.isfinite(table.loc['Среднее', 'Распределение'])
+    assert np.isfinite(table.loc['Среднее', 'Выборка, n=400'])
+    assert table.loc['Медиана (50%)', 'Распределение'] == pytest.approx(0.0)
+
+
+def test_sample_is_stable_until_a_new_one_is_requested():
+    at = select(new_explore_app(), 'norm')
+    widget(at.checkbox, 'Да').check().run()
+    column = 'Выборка, n=400'
+    first = at.dataframe[0].value[column].copy()
+
+    widget(at.checkbox, 'CDF').check().run()
+    assert at.dataframe[0].value[column].equals(first)
+
+    widget(at.button, 'Новая выборка').click().run()
+    assert not at.dataframe[0].value[column].equals(first)
+
+
+def test_sigma_warning_for_undefined_variance():
+    at = select(new_explore_app(), 'cauchy')
+    widget(at.checkbox, '1σ').check().run()
+    assert not at.exception
+    assert any('не определены' in w.value for w in at.warning)
+
+
+def set_step(at, label):
+    widget(at.checkbox, 'Нажмите, чтобы настроить параметры').check().run()
+    widget(at.radio, 'Доступные параметры:').set_value(label).run()
+
+
+def test_density_that_scipy_cannot_evaluate_shows_a_warning():
+    at = select(new_explore_app(), 'ncx2')
+    set_step(at, 'Интервал шага ползунка: 0.01')
+    first_slider(at, ': df =').set_value(0.01).run()
+    assert not at.exception
+    assert any('SciPy не смог' in w.value or 'построить нельзя' in w.value for w in at.warning)
+
+
+def test_probability_marker_works_on_a_very_narrow_distribution():
+    at = select(new_explore_app(), 'norm')
+    set_step(at, 'Ручной ввод значений параметров')
+    [n for n in at.number_input if 'scale' in n.label][0].set_value(0.0001).run()
+    widget(at.checkbox, 'CDF').check().run()
+    widget(at.checkbox, 'P(X<=x)').check().run()
+    assert not at.exception
+    slider = first_slider(at, 'Установите')
+    assert slider.min < slider.value < slider.max

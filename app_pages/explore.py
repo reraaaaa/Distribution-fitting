@@ -6,11 +6,21 @@ Aauthor: D-one
 import time
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import streamlit as st
 
 from ParsDistributions import DistributionParser
-from UtilitySt import CodeGenerator, DisplaySettings, Figure, sample_distribution
+from UtilitySt import (
+    DEFAULT_SEED,
+    NUMERIC_ERRORS,
+    CodeGenerator,
+    DisplaySettings,
+    Figure,
+    InvalidParameters,
+    parameter_range,
+    sample_distribution,
+)
 
 # Режимы ввода параметров: подпись в интерфейсе -> шаг ползунка (None - ручной ввод)
 PARAMETER_MODES = {
@@ -33,20 +43,25 @@ def parameter_label(param, default):
     return f'Значение по умолчанию: {param} = {default}'
 
 
-def parameter_slider(param, default, step):
+@st.cache_resource(max_entries=64, show_spinner='Генерация выборки...')
+def cached_sample(name, parameters, seed):
     """
-    Ползунок параметра. Границы считаются от значения по умолчанию из SciPy.
+    Выборка зависит только от распределения, параметров и зерна, поэтому не пересчитывается,
+    когда пользователь меняет настройки отображения (у некоторых распределений генерация занимает десятки секунд).
     """
-    # loc и параметры с неположительным значением по умолчанию могут быть отрицательными
-    if param != 'loc' and default >= 0.01:
-        min_value = 0.01
-    else:
-        min_value = min(-10.00, 2 * default)
+    return sample_distribution(name, parameters, seed=seed)
+
+
+def parameter_slider(name, param, default, step):
+    """
+    Ползунок параметра. Границы - область определения параметра из SciPy вокруг значения по умолчанию.
+    """
+    bounds = parameter_range(name, param, default, step)
+    if bounds.is_integer:
+        return st.slider(parameter_label(param, default),
+                         min_value=bounds.min_value, value=int(default), max_value=bounds.max_value, step=1)
     return st.slider(parameter_label(param, default),
-                     min_value=min_value,
-                     value=default,
-                     max_value=max(10.00, 2 * default),
-                     step=step)
+                     min_value=bounds.min_value, value=default, max_value=bounds.max_value, step=step)
 
 
 def parameter_controls(info):
@@ -63,10 +78,21 @@ def parameter_controls(info):
     parameters = {}
     for param, default in info.parameters.items():
         if step is None:
-            parameters[param] = float(st.text_input(parameter_label(param, default), str(default)))
+            parameters[param] = st.number_input(parameter_label(param, default), value=default, format='%.4f')
         else:
-            parameters[param] = parameter_slider(param, default, step)
+            parameters[param] = parameter_slider(info.name, param, default, step)
     return parameters
+
+
+def sample_seed():
+    """
+    Зерно генератора выборки. Выборка не меняется при перезапусках скрипта, пока пользователь не попросит новую.
+    """
+    if 'sample_seed' not in st.session_state:
+        st.session_state.sample_seed = DEFAULT_SEED
+    if st.button('Новая выборка', help='Сгенерировать другую случайную выборку с теми же параметрами'):
+        st.session_state.sample_seed += 1
+    return st.session_state.sample_seed
 
 
 def curve_controls(label, shine_key, value):
@@ -87,6 +113,7 @@ def curve_controls(label, shine_key, value):
 def display_controls(sample):
     """
     Настройки отображения рисунка.
+    :param sample: Sample или None, если с текущими параметрами распределение построить нельзя
     :return: (DisplaySettings, показывать ли таблицу описательной статистики)
     """
     st.markdown("**Выберите режим фигуры:**")
@@ -99,27 +126,27 @@ def display_controls(sample):
 
     mark_p = False
     x_cdf = None
-    if cdf:
+    if cdf and sample is not None:
         mark_p = st.checkbox('P(X<=x)', value=False)
         if mark_p:
-            # Границы берем из x, а не из случайной выборки r: иначе ползунок
-            # сбрасывался бы при каждом перезапуске скрипта
-            x_min, x_max = round(float(sample.x[0]), 2), round(float(sample.x[-1]), 2)
+            # Границы и шаг - от диапазона графика: он бывает и 0.001, и 1e6
+            x_min, x_max = float(sample.x[0]), float(sample.x[-1])
             x_cdf = st.slider('Установите значение x, чтобы получить: (x, P(X<=x))',
                               min_value=x_min,
-                              value=min(max(round(float(sample.rv.median()), 2), x_min), x_max),
+                              value=min(max(float(sample.rv.median()), x_min), x_max),
                               max_value=x_max,
-                              step=0.10)
+                              step=(x_max - x_min) / 200,
+                              format='%.4g')
 
     sf, sf_shine = curve_controls('SF', 'sf_shine', value=False)
 
     boxplot = st.checkbox('Блочная диаграмма', value=True)
 
-    st.markdown("**Показать квантили:**")
+    st.markdown("**Показать квартили распределения:**")
     quantiles = tuple(column.checkbox(f'Q{i}', value=False)
                       for i, column in enumerate(st.columns(3), start=1))
 
-    st.markdown("**Область тени**")
+    st.markdown("**Закрасить среднее ± kσ распределения:**")
     sigmas = tuple(column.checkbox(f'{i}σ', value=False)
                    for i, column in enumerate(st.columns(3), start=1))
 
@@ -135,23 +162,34 @@ def display_controls(sample):
     return settings, show_statistics
 
 
-def statistics_table(r):
+def statistics_table(sample):
     """
-    Описательная статистика случайной выборки r.
+    Описательная статистика: свойства распределения рядом со значениями по случайной выборке.
     """
-    df_data = pd.DataFrame(r)
-    statistics = df_data.describe()
-    statistics.loc['var'] = df_data.var().tolist()
-    statistics.loc['skew'] = df_data.skew().tolist()
-    statistics.loc['kurt'] = df_data.kurtosis().tolist()
-    st.dataframe(statistics.rename(columns={0: 'Value'}))
+    rv, r = sample.rv, pd.Series(sample.r)
+    with np.errstate(all='ignore'):
+        mean, variance, skewness, excess_kurtosis = (float(value) for value in rv.stats(moments='mvsk'))
+        q1, median, q3 = rv.ppf([0.25, 0.50, 0.75])
+        support_min, support_max = rv.support()
+    statistics = pd.DataFrame(
+        {
+            'Распределение': [mean, np.sqrt(variance), variance, skewness, excess_kurtosis,
+                              support_min, q1, median, q3, support_max],
+            f'Выборка, n={len(r)}': [r.mean(), r.std(), r.var(), r.skew(), r.kurtosis(),
+                                     r.min(), r.quantile(0.25), r.median(), r.quantile(0.75), r.max()],
+        },
+        index=['Среднее', 'Стандартное отклонение', 'Дисперсия', 'Асимметрия', 'Эксцесс (избыточный)',
+               'Минимум', 'Q1 (25%)', 'Медиана (50%)', 'Q3 (75%)', 'Максимум'])
+    st.dataframe(statistics)
+    st.caption('«Распределение» - теоретические значения; nan или inf означает, что величина не определена '
+               'или бесконечна. «Выборка» - оценки по случайной выборке, они меняются от выборки к выборке.')
 
 
-def export_code(name, parameters):
+def export_code(name, parameters, seed):
     """
     Показывает сгенерированный скрипт и кнопку, которая его скачивает.
     """
-    code = CodeGenerator(distribution=name, parameters=parameters).get_generated_code()
+    code = CodeGenerator(distribution=name, parameters=parameters, seed=seed).get_generated_code()
     st.code(code)
     st.download_button('Скачать файл Python', data=code,
                        file_name=f'{name}_{time.strftime("%Y%m%d_%H%M%S")}.py',
@@ -172,15 +210,22 @@ def p_explore():
         info = distributions[name]
         st.markdown("**Параметры**")
         parameters = parameter_controls(info)
+        seed = sample_seed()
         st.markdown("**SciPy официальная документация:**")
         st.info(f"Подробнее о: [{info.fullname}]({info.url})")
 
     st.markdown(f"<h1 style='text-align: center;'>{info.fullname}</h1>", unsafe_allow_html=True)
 
-    sample = sample_distribution(name, parameters)
-
     if info.equation:
         st.latex(info.equation)
+        st.caption('Плотность стандартной формы (loc = 0, scale = 1). '
+                   'С параметрами сдвига и масштаба: f((x - loc) / scale) / scale.')
+
+    try:
+        sample = cached_sample(name, parameters, seed)
+    except InvalidParameters as e:
+        sample = None
+        st.warning(f'С такими параметрами распределение построить нельзя: {e}. Измените значения параметров.')
 
     with st.sidebar.expander("Настройка отображения"):
         settings, show_statistics = display_controls(sample)
@@ -191,13 +236,25 @@ def p_explore():
         if export_requested:
             st.write('*Код находится под графиком')
 
-    figure = Figure(settings=settings, x=sample.x, r=sample.r, rv=sample.rv)
-    st.pyplot(figure.figure_display_control())
-    # Иначе фигуры накапливаются в памяти при каждом перезапуске скрипта
-    plt.close('all')
+    if sample is None:
+        return
 
-    if show_statistics:
-        statistics_table(sample.r)
+    figure = Figure(settings=settings, x=sample.x, r=sample.r, rv=sample.rv)
+    try:
+        if any(settings.sigmas) and not figure.sigma_is_defined():
+            st.warning('У этого распределения с такими параметрами среднее или дисперсия не определены '
+                       'либо бесконечны, поэтому область ±σ не показана.')
+        st.pyplot(figure.figure_display_control())
+        if show_statistics:
+            statistics_table(sample)
+    except NUMERIC_ERRORS as e:
+        # выборка построилась, но плотность или моменты при таких параметрах SciPy вычислить не смог
+        st.warning(f'SciPy не смог вычислить распределение с такими параметрами: {e}. '
+                   'Измените значения параметров.')
+        return
+    finally:
+        # Иначе фигуры накапливаются в памяти при каждом перезапуске скрипта
+        plt.close('all')
 
     if export_requested:
-        export_code(name, parameters)
+        export_code(name, parameters, seed)

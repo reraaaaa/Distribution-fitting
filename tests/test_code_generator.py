@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pytest
 
-from UtilitySt import CodeGenerator
+from UtilitySt import CodeGenerator, sample_distribution
 
 
 @pytest.mark.parametrize('name, parameters', [
@@ -11,14 +12,16 @@ from UtilitySt import CodeGenerator
 ])
 def test_generated_script_runs(monkeypatch, name, parameters):
     monkeypatch.setattr(plt, 'show', lambda *args, **kwargs: None)
-    code = CodeGenerator(distribution=name, parameters=parameters).get_generated_code()
+    code = CodeGenerator(distribution=name, parameters=parameters, seed=7).get_generated_code()
 
     assert not code.startswith((' ', '\n')), 'script must not be indented'
     namespace = {}
     exec(compile(code, f'<generated {name}>', 'exec'), namespace)
     plt.close('all')
 
-    assert namespace['r'].shape == (400,)
-    assert namespace['x'].shape == (400,)
+    # скрипт воспроизводит выборку и сетку, показанные в приложении
+    sample = sample_distribution(name, parameters, seed=7)
+    assert np.array_equal(namespace['r'], sample.r)
+    assert np.array_equal(namespace['x'], sample.x)
     for param, value in parameters.items():
         assert namespace[param] == value

@@ -3,6 +3,7 @@ Created on 21/12/2021
 Aauthor: D-one
 """
 
+import scipy
 import streamlit as st
 
 image1 = ""
@@ -46,11 +47,11 @@ def p_introduction():
     with feature1:
         show_image(image1)
     with feature2:
-        st.warning('Select Distribution')
+        st.warning('Выбор распределения')
         st.info("""
-                - Select distribution from Dropdown Menu (or type its name)
-                - Change distribution parameters on sliders and see the change.
-                - Check created hyperlink to **SciPy** official documentation at the bottom of the sidebar.
+                - Выберите распределение в выпадающем списке (или введите его имя).
+                - Меняйте параметры распределения ползунками и смотрите, как меняется график.
+                - Ссылка на официальную документацию **SciPy** находится под параметрами.
                 """)
 
     make_line()
@@ -59,12 +60,12 @@ def p_introduction():
     with feature3:
         show_image(image2)
     with feature4:
-        st.warning('Tweak Display')
-        st.info(r"""
-                - Pick *Dark/Light Theme*
-                - Select **on/off** each option: Histogram, PDF, CDF, SF,
-                boxplot, quantiles, or shade 1/2/3 $\sigma$.
-                - Get Table with descriptive statistics.
+        st.warning('Настройка отображения')
+        st.info("""
+                - Выберите *тёмную или светлую тему*.
+                - Включайте и выключайте: гистограмму, PDF, CDF, SF,
+                блочную диаграмму, квартили, области среднее ± 1/2/3 $\\sigma$.
+                - Получите таблицу описательной статистики.
                 """)
     make_line()
 
@@ -72,77 +73,42 @@ def p_introduction():
     with feature5:
         show_image(image3)
     with feature6:
-        st.warning('Export')
+        st.warning('Экспорт')
         st.info("""
-                - Generate a Python code with selected distribution and
-                parameters
-                - Save .py file or copy to clipboard to take it home.
+                - Сгенерируйте код Python с выбранным распределением и параметрами.
+                - Скачайте файл .py или скопируйте код.
                 """)
 
     make_line()
 
-    st.error('Fit distributions')
-    feature7, feature8 = st.columns([0.4, 0.6])
-    with feature7:
-        st.warning('Import')
-        st.info("""
-                - Import a **.csv** file with your own data (or get a sample).
-                - Plot your data with or without basic statistical information.
-                """)
-    with feature8:
-        show_image(image4)
+    st.error('Подбор закона распределения')
+    st.info('Раздел в разработке.')
 
     make_line()
 
-    feature9, feature10 = st.columns([0.4, 0.6])
-    with feature9:
-        st.warning('Fit')
-        st.info("""
-                - Multiselectbox: pick any number of distributions
-                - **'All_distributions'** - select all
-                - Fit distribution(s) to your data
-                """)
-    with feature10:
-        show_image(image5)
+    st.info(f'Доступны непрерывные распределения из **SciPy v{scipy.__version__}**.')
 
-    make_line()
+    st.markdown("""
 
-    feature10, feature11 = st.columns([0.4, 0.6])
-    with feature10:
-        st.warning('Results & Export')
-        st.info("""
-                - Interactive **Figures**
-                - **Table** with all fitted distribution(s)
-                - Generate **Python code** with best fit distribution
-                """)
-    with feature11:
-        show_image(image6)
+                - Сокращения и обозначения:
 
-    make_line()
+                    - PDF - функция плотности вероятности (Probability Density Function)
 
-    st.info('There are 100 continuous distribution functions  \
-                from **SciPy v1.6.1** available to play with.')
+                    - CDF - функция распределения (Cumulative Distribution Function)
 
-    st.markdown(r"""
+                    - SF - функция выживания (Survival Function), SF(x) = 1 - CDF(x)
 
-                - Abriviations:
+                    - P(X<=x) - вероятность получить значение не больше x
+                                для выбранного x
 
-                    - PDF - Probability Density Function
+                    - Q1, Q2, Q3 - квартили распределения: значения, ниже которых лежит
+                                25%, 50% и 75% вероятности
 
-                    - CDF - Cumulative Density Function
+                    - $\\sigma$ - стандартное отклонение распределения. На графике закрашивается
+                                область среднее $\\pm k\\sigma$, в легенде указана вероятность попадания в неё.
+                                Доли 68%, 95% и 99.7% верны только для нормального распределения
 
-                    - SF - Survival Function
-
-                    - P(X<=x) - Probability of obtaining a value smaller than
-                                x for selected x.
-
-                    - Empirical quantiles for a data array:
-                        Q1, Q2, Q3 respectively 0.25, 0.50, 0.75
-
-                    - $\sigma$ (Standard Deviation). On plot shades:
-                        mean$\pm x\sigma$
-
-                    - SSE - Sum of squared estimate of errors
+                    - Выборка - 400 случайных чисел из распределения; по ней строятся гистограмма
+                                и блочная диаграмма
 
                 """)
-    return
