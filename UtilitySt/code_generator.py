@@ -48,7 +48,7 @@ ax[0].hist(r, density=True, bins=20, color='lightgrey',
 
 # Блочная диаграмма выборки
 bp = ax[1].boxplot(r, patch_artist=True,
-           vert=False,
+           orientation='horizontal',
            notch=False,
            showfliers=False,
            )

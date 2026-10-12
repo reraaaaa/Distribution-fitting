@@ -16,14 +16,14 @@ streamlit run streamlit_app.py           # serves on :8501; needs network at fir
 pytest                                   # full suite, about 10 minutes, no network needed
 pytest tests/test_sampling.py            # one file
 pytest tests/test_app.py -k "norm"       # one distribution through the app
-pytest --deselect tests/test_app.py::test_distribution_renders_and_exports_runnable_code   # skip the 94-distribution sweep
+pytest --deselect tests/test_app.py::test_distribution_renders_and_exports_runnable_code   # skip the per-distribution sweep
 ruff check .
 ```
 
 - Run everything from the repo root: imports are root-relative (`app_pages`, `ParsDistributions`, `UtilitySt`).
-- `venv/` is a local, gitignored Python 3.10 environment. Streamlit Community Cloud and the devcontainer use newer Pythons.
+- Python 3.12+ is required (SciPy and NumPy pins). `venv/` is a local, gitignored Python 3.14 environment; Streamlit Community Cloud deploys on its default Python (3.14 at the time of writing) and cannot be told otherwise from the repo.
 - Keep scratch files in `.tmp/` (gitignored), not in system temp directories.
-- `requirements.txt` pins `streamlit~=1.65.0` together with 2023-era `numpy~=1.26`, `scipy~=1.11.4`, `pandas~=2.1`, `matplotlib~=3.8`. Do not upgrade Streamlit with `--upgrade` alone: an unpinned resolve pulls numpy 2, which scipy 1.11 does not support. Install from the requirements file.
+- `requirements.txt` pins compatible-release versions (`scipy~=1.18.1`, `numpy~=2.5.4`, ...). Every pin must have a prebuilt wheel for the Python that Community Cloud uses: a pin without one makes the deploy try to compile from source and fail (this happened with scipy 1.11 on Python 3.14).
 
 ## Architecture
 
@@ -54,7 +54,7 @@ Parameters travel as one ordered dict, `{*shape_params, 'loc', 'scale'}`, in Sci
 - **The curve grid is not uniform.** `curve_grid` merges a uniform grid with a probability-uniform one so narrow peaks are drawn. Do not assume constant spacing in `x`.
 - **The parser is cached with `st.cache_resource`** and built once per server process; restart the server to re-scrape. Samples are cached the same way and must be treated as read-only.
 - **Private SciPy API.** `stats._distr_params` (default shapes), `dist._argcheck` (validation) and `dist._shape_info()` (domains) are private and may change with the SciPy version. The test suite sweeps all distributions and is what will tell you.
-- **Formula extraction** picks the `.. math::` block in the docstring that starts with `f(`. About ten distributions have no such block and show no formula; that is intended, a statistic's definition is not a density.
+- **Formula extraction** picks the `.. math::` block in the docstring that starts with `f(`. Nine distributions have no such block and show no formula; that is intended, a statistic's definition is not a density.
 
 ### Tests
 

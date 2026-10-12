@@ -174,12 +174,15 @@ def set_step(at, label):
     widget(at.radio, 'Доступные параметры:').set_value(label).run()
 
 
-def test_density_that_scipy_cannot_evaluate_shows_a_warning():
-    at = select(new_explore_app(), 'ncx2')
-    set_step(at, 'Интервал шага ползунка: 0.01')
-    first_slider(at, ': df =').set_value(0.01).run()
+def test_density_that_scipy_cannot_evaluate_shows_a_warning(monkeypatch):
+    # какие именно параметры SciPy не осиливает, зависит от его версии, поэтому отказ имитируем
+    def overflow(self):
+        raise OverflowError('Error in function boost::math::gamma_p_derivative')
+
+    monkeypatch.setattr('UtilitySt.visual.Figure.figure_display_control', overflow)
+    at = select(new_explore_app(), 'norm')
     assert not at.exception
-    assert any('SciPy не смог' in w.value or 'построить нельзя' in w.value for w in at.warning)
+    assert any('SciPy не смог' in w.value for w in at.warning)
 
 
 def test_probability_marker_works_on_a_very_narrow_distribution():

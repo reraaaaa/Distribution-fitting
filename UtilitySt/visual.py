@@ -178,7 +178,7 @@ class Figure(object):
         :return:
         """
         bp = ax.boxplot(self.r, patch_artist=True,
-                        vert=False,
+                        orientation='horizontal',
                         notch=False,
                         showfliers=False
                         )

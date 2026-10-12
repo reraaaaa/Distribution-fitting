@@ -34,6 +34,6 @@ setup(
         'ParsDistributions',
         'UtilitySt'
     ],
+    python_requires='>=3.12',
     install_requires=REQUIREMENTS,
-    setup_requires=['pytest-runner', 'flake8'],
 )

@@ -8,9 +8,9 @@
 
 [![Открыть в Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://distribution-fitting.streamlit.app)
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.65-FF4B4B?logo=streamlit&logoColor=white)
-![SciPy](https://img.shields.io/badge/SciPy-1.11-8CAAE6?logo=scipy&logoColor=white)
+![SciPy](https://img.shields.io/badge/SciPy-1.18-8CAAE6?logo=scipy&logoColor=white)
 ![License](https://img.shields.io/github/license/reraaaaa/Distribution-fitting?color=0080ff)
 
 <a href="https://distribution-fitting.streamlit.app">
@@ -23,7 +23,7 @@
 
 | | |
 | --- | --- |
-| **94 распределения** | Все непрерывные распределения из документации SciPy, которые есть в установленной версии |
+| **97 распределений** | Все непрерывные распределения из документации SciPy, которые есть в установленной версии |
 | **Параметры** | Ползунки для параметров формы, `loc` и `scale` в границах области определения каждого параметра. Недопустимое сочетание даёт предупреждение, а не ошибку |
 | **Графики** | PDF, CDF и функция выживания, гистограмма и блочная диаграмма случайной выборки, тёмная и светлая тема |
 | **Квартили и σ** | Квартили распределения и области «среднее ± 1/2/3σ» с подписью реальной вероятности попадания: 68/95/99.7% верны только для нормального распределения |
@@ -48,9 +48,7 @@ pip install -r requirements.txt
 streamlit run streamlit_app.py
 ```
 
-Приложение откроется на <http://localhost:8501>. При старте нужен интернет: список распределений читается из документации SciPy.
-
-Ставьте зависимости именно из `requirements.txt`, а не обновляйте пакеты по одному: закреплённый SciPy 1.11 не работает с NumPy 2.
+Нужен Python 3.12 или новее. Приложение откроется на <http://localhost:8501>. При старте нужен интернет: список распределений читается из документации SciPy.
 
 ### Свой экземпляр на Streamlit Community Cloud
 
