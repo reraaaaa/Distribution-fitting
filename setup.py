@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import ast
-import os
 import re
 
 from setuptools import setup
@@ -15,7 +14,7 @@ with open('ParsDistributions/__init__.py', 'rb') as f:
 with open('README.md') as readme_file:
     README = readme_file.read()
 
-with open(os.path.join("requirements", "requirements.txt")) as reqs:
+with open("requirements.txt") as reqs:
     REQUIREMENTS = reqs.readlines()
 
 
@@ -31,6 +30,7 @@ setup(
     url='https://github.com/reraaaaa/Distribution-fitting',
     keywords='Distribution,fitting,',
     packages=[
+        'app_pages',
         'ParsDistributions',
         'UtilitySt'
     ],

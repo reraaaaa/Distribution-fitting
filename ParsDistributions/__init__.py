@@ -1,7 +1,8 @@
 __version__ = '1.0.0'
 
-from .parser import DistributionParser
+from .parser import DistributionInfo, DistributionParser
 
 __all__ = [
-    "DistributionParser"
+    "DistributionInfo",
+    "DistributionParser",
 ]

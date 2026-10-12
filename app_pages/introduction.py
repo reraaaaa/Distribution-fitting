@@ -15,20 +15,10 @@ image6 = ""
 def show_image(image):
     # Пока скриншоты не добавлены, пустые заглушки не показываем
     if image:
-        st.image(image, use_column_width=True)
+        st.image(image, width='stretch')
 
 
 def p_introduction():
-    # Пробел, чтобы текст поля «О программе» был ниже
-    st.sidebar.write("")
-    st.sidebar.write("")
-    st.sidebar.write("")
-    st.sidebar.write("")
-    st.sidebar.write("")
-    st.sidebar.write("")
-    st.sidebar.write("")
-    st.sidebar.write("")
-
     st.markdown("<h2 style='text-align: center;'> Добро пожаловать в </h2>",
                 unsafe_allow_html=True)
     st.markdown("<h1 style='text-align: center;'> Distribution Fitting </h1>",

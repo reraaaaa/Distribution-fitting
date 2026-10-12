@@ -5,8 +5,17 @@ from streamlit.testing.v1 import AppTest
 
 from tests.conftest import ROOT
 
-EXPLORE = 'База распределений'
 SELECT_LABEL = 'Нажмите ниже (или введите), чтобы выбрать распределение'
+
+
+def explore_page():
+    from app_pages import p_explore
+    p_explore()
+
+
+def fitting_page():
+    from app_pages import p_fitting
+    p_fitting()
 
 
 def widget(collection, label):
@@ -21,26 +30,26 @@ def assert_no_errors(at):
     assert not [e.value for e in at.error if str(e.value).startswith('Не удалось')]
 
 
-def new_app(page=None):
-    at = AppTest.from_file(str(ROOT / 'streamlit_app.py'), default_timeout=300).run()
-    if page:
-        at.sidebar.radio[0].set_value(page).run()
-    return at
+def new_explore_app():
+    return AppTest.from_function(explore_page, default_timeout=300).run()
 
 
 @pytest.fixture(scope='module')
 def explore_app():
-    return new_app(EXPLORE)
+    return new_explore_app()
 
 
-def test_every_page_opens():
-    at = new_app()
+def test_entry_point_opens_the_default_page():
+    at = AppTest.from_file(str(ROOT / 'streamlit_app.py'), default_timeout=300).run()
     assert_no_errors(at)
-    pages = at.sidebar.radio[0].options
-    assert len(pages) == 3
-    for page in pages:
-        at.sidebar.radio[0].set_value(page).run()
-        assert_no_errors(at)
+    assert any('Distribution Fitting' in m.value for m in at.markdown)
+    assert [h.value for h in at.sidebar.header] == ['О нас']
+
+
+def test_fitting_page_opens():
+    at = AppTest.from_function(fitting_page, default_timeout=300).run()
+    assert_no_errors(at)
+    assert len(at.info) == 1
 
 
 def test_distribution_renders_and_exports_runnable_code(explore_app, monkeypatch, distribution):
@@ -51,6 +60,7 @@ def test_distribution_renders_and_exports_runnable_code(explore_app, monkeypatch
     widget(at.button, 'Сгенерировать код Python').click().run()
     assert_no_errors(at)
     assert len(at.code) == 1
+    assert len(at.download_button) == 1
 
     monkeypatch.setattr(plt, 'show', lambda *args, **kwargs: None)
     exec(compile(at.code[0].value, f'<generated {distribution}>', 'exec'), {})
@@ -63,18 +73,21 @@ def first_slider(at, text):
 
 TOGGLE_STEPS = [
     ('CDF on', lambda at: widget(at.checkbox, 'CDF').check()),
+    ('CDF shine off', lambda at: at.checkbox(key='cdf_shine').uncheck()),
     ('P(X<=x) on', lambda at: widget(at.checkbox, 'P(X<=x)').check()),
     ('move x', lambda at: first_slider(at, 'Установите').set_value(first_slider(at, 'Установите').min)),
     ('SF on', lambda at: widget(at.checkbox, 'SF').check()),
+    ('SF shine off', lambda at: at.checkbox(key='sf_shine').uncheck()),
     ('Q1', lambda at: widget(at.checkbox, 'Q1').check()),
     ('Q2', lambda at: widget(at.checkbox, 'Q2').check()),
     ('Q3', lambda at: widget(at.checkbox, 'Q3').check()),
-    ('1 sigma', lambda at: widget(at.checkbox, '').check()),
-    ('2 sigma', lambda at: widget(at.checkbox, ' ').check()),
-    ('3 sigma', lambda at: widget(at.checkbox, '   ').check()),
+    ('1 sigma', lambda at: widget(at.checkbox, '1σ').check()),
+    ('2 sigma', lambda at: widget(at.checkbox, '2σ').check()),
+    ('3 sigma', lambda at: widget(at.checkbox, '3σ').check()),
     ('statistics', lambda at: widget(at.checkbox, 'Да').check()),
     ('light mode', lambda at: widget(at.radio, 'Опции').set_value('Light Mode')),
     ('dark mode', lambda at: widget(at.radio, 'Опции').set_value('Dark Mode')),
+    ('PDF shine off', lambda at: at.checkbox(key='pdf_shine').uncheck()),
     ('PDF off', lambda at: widget(at.checkbox, 'PDF').uncheck()),
     ('histogram off', lambda at: widget(at.checkbox, 'Гистограмма').uncheck()),
     ('CDF off', lambda at: widget(at.checkbox, 'CDF').uncheck()),
@@ -92,7 +105,7 @@ TOGGLE_STEPS = [
 
 @pytest.mark.parametrize('name', ['norm', 'beta', 'genextreme', 'alpha'])
 def test_display_toggles(name):
-    at = new_app(EXPLORE)
+    at = new_explore_app()
     widget(at.selectbox, SELECT_LABEL).select(name).run()
     for label, action in TOGGLE_STEPS:
         action(at)

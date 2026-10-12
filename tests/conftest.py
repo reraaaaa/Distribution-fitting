@@ -47,7 +47,7 @@ def continuous_names():
     monkeypatch = pytest.MonkeyPatch()
     _patch_docs(monkeypatch)
     try:
-        return DistributionParser('continuous').get_distribution_names()
+        return list(DistributionParser('continuous').distributions)
     finally:
         monkeypatch.undo()
 

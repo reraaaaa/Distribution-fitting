@@ -1,9 +1,13 @@
 __version__ = '1.0.0'
 
 from .code_generator import CodeGenerator
-from .visual import Figure
+from .sampling import Sample, sample_distribution
+from .visual import DisplaySettings, Figure
 
 __all__ = [
+    "CodeGenerator",
+    "DisplaySettings",
     "Figure",
-    "CodeGenerator"
+    "Sample",
+    "sample_distribution",
 ]

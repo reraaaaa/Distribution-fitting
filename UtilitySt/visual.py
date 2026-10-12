@@ -1,6 +1,34 @@
+from dataclasses import dataclass
+
 import matplotlib.pyplot as plt
-import numpy as np
 from scipy.stats.mstats import mquantiles
+
+
+@dataclass(frozen=True)
+class DisplaySettings:
+    """
+    Что показывать на рисунке. Значения по умолчанию совпадают с начальным состоянием виджетов.
+    :param quantiles: показывать ли Q1, Q2, Q3
+    :param sigmas: закрашивать ли области 1, 2, 3 сигма
+    :param x_cdf: значение x для отметки (x, P(X<=x)); используется только при mark_p
+    """
+    plot_mode: str = 'Dark Mode'
+    histogram: bool = True
+    pdf: bool = True
+    pdf_shine: bool = True
+    cdf: bool = False
+    cdf_shine: bool = False
+    sf: bool = False
+    sf_shine: bool = False
+    mark_p: bool = False
+    x_cdf: float | None = None
+    boxplot: bool = True
+    quantiles: tuple = (False, False, False)
+    sigmas: tuple = (False, False, False)
+
+    @property
+    def has_curves(self):
+        return any([self.pdf, self.cdf, self.sf, self.histogram])
 
 
 class Figure(object):
@@ -25,11 +53,7 @@ class Figure(object):
         'ytick.labelright': False,
     }
 
-    lines = {'solid': '-',
-             'dashed': '--',
-             'dashes': [5, 10, 5, 10],
-             'dashes_r': (0, (5, 10))
-             }
+    quantile_dashes = (0, (5, 10))
 
     DARK_MODE_COLORS = {
         'pdf_line_color': '#fec44f',
@@ -57,36 +81,19 @@ class Figure(object):
         'quant3_color': '#b35806'
     }
 
-    def __init__(self, select_hist,
-                 select_pdf_shine, select_cdf_shine, select_sf_shine,
-                 select_mark_p, x_cdf, select_boxplot,
-                 q1, q2, q3, s1, s2, s3,
-                 x, r, rv,
-                 plot_mode, select_pdf, select_cdf, select_sf):
-        """ Set properties """
-
-        self.select_hist = select_hist
-        self.select_pdf_shine = select_pdf_shine
-        self.select_cdf_shine = select_cdf_shine
-        self.select_sf_shine = select_sf_shine
-        self.select_mark_p = select_mark_p
-        self.x_cdf = x_cdf
-        self.select_boxplot = select_boxplot
-        self.q1 = q1
-        self.q2 = q2
-        self.q3 = q3
-        self.s1 = s1
-        self.s2 = s2
-        self.s3 = s3
+    def __init__(self, settings, x, r, rv):
+        """
+        :param settings: DisplaySettings - что и как показывать
+        :param x: массив значений x для линий
+        :param r: случайная выборка из распределения
+        :param rv: frozen распределение
+        """
+        self.settings = settings
         self.x = x
         self.r = r
         self.rv = rv
-        self.plot_mode = plot_mode
-        self.select_pdf = select_pdf
-        self.select_cdf = select_cdf
-        self.select_sf = select_sf
-        self.colors = self.get_color_scheme(plot_mode)
-        self.plt = self.display_mode(plot_mode)
+        self.colors = self.get_color_scheme(settings.plot_mode)
+        self.display_mode(settings.plot_mode)
 
     def get_color_scheme(self, plot_mode):
         """
@@ -114,7 +121,6 @@ class Figure(object):
             plt.rcParams['figure.facecolor'] = 'white'
         else:
             raise ValueError("Invalid mode. Expected 'Dark Mode' or 'Light Mode'")
-        return plt
 
     def plot_with_shine(self, ax, select, select_shine, color, func, label):
         """
@@ -146,24 +152,24 @@ class Figure(object):
         :param ax:
         :return:
         """
-        self.plot_with_shine(ax, self.select_pdf, self.select_pdf_shine, self.colors['pdf_line_color'], self.rv.pdf,
-                             'PDF')
-        self.plot_with_shine(ax, self.select_cdf, self.select_cdf_shine, self.colors['cdf_line_color'], self.rv.cdf,
-                             'CDF')
+        s = self.settings
+        self.plot_with_shine(ax, s.pdf, s.pdf_shine, self.colors['pdf_line_color'], self.rv.pdf, 'PDF')
+        self.plot_with_shine(ax, s.cdf, s.cdf_shine, self.colors['cdf_line_color'], self.rv.cdf, 'CDF')
         # Отметьте точку на CDF
-        if self.select_mark_p:
+        if s.mark_p:
             xmin, xmax = ax.get_xlim()
-            ax.vlines(self.x_cdf, ymin=0, ymax=self.rv.cdf(self.x_cdf),
+            p = self.rv.cdf(s.x_cdf)
+            ax.vlines(s.x_cdf, ymin=0, ymax=p,
                       color=self.colors['cdf_line_color'],
                       linestyle=':', linewidth=1)
-            ax.hlines(self.rv.cdf(self.x_cdf), xmin=xmin,
-                      xmax=self.x_cdf, color=self.colors['cdf_line_color'],
+            ax.hlines(p, xmin=xmin,
+                      xmax=s.x_cdf, color=self.colors['cdf_line_color'],
                       linestyle=':', linewidth=1)
-            ax.annotate(f'({self.x_cdf:.2f}, {self.rv.cdf(self.x_cdf):.2f})',
-                        xy=(self.x_cdf, self.rv.cdf(self.x_cdf)),
+            ax.annotate(f'({s.x_cdf:.2f}, {p:.2f})',
+                        xy=(s.x_cdf, p),
                         color=self.colors['cdf_line_color'])
 
-        self.plot_with_shine(ax, self.select_sf, self.select_sf_shine, 'plum', self.rv.sf, 'SF')
+        self.plot_with_shine(ax, s.sf, s.sf_shine, 'plum', self.rv.sf, 'SF')
 
     def boxplot(self, ax):
         """
@@ -171,10 +177,6 @@ class Figure(object):
         :param ax:
         :return:
         """
-        # Check if self.r is defined and is an array-like object
-        if 'r' not in self.__dict__ or not isinstance(self.r, (list, tuple, np.ndarray)):
-            raise ValueError("self.r must be defined and be an array-like object")
-
         bp = ax.boxplot(self.r, patch_artist=True,
                         vert=False,
                         notch=False,
@@ -201,13 +203,13 @@ class Figure(object):
         # Compute
         quant = mquantiles(self.r)
 
-        for idx, q in enumerate([self.q1, self.q2, self.q3], start=1):
+        for idx, q in enumerate(self.settings.quantiles, start=1):
             if q:
                 """ Compute the quantiles and set them as vertical lines. """
                 # Plot
                 ax.vlines(quant[idx - 1], ymin=0, ymax=self.rv.pdf(quant[idx - 1]),
                           color=self.colors[f'quant{idx}_color'],
-                          dashes=self.lines['dashes_r'],
+                          dashes=self.quantile_dashes,
                           linewidth=2, label=f'Q{idx} = {quant[idx - 1]:.2f}',
                           zorder=0, clip_on=False)
 
@@ -222,7 +224,7 @@ class Figure(object):
         :param ax:
         :return:
         """
-        for idx, s in enumerate([self.s1, self.s2, self.s3], start=1):
+        for idx, s in enumerate(self.settings.sigmas, start=1):
             if s:
                 """
                 Compute standard deviation and the mean.
@@ -254,11 +256,11 @@ class Figure(object):
 
     def plot_lines(self, ax):
         self.pdf_cdf_lines(ax=ax)
-        if any([self.q1, self.q2, self.q3]):
+        if any(self.settings.quantiles):
             self.quantiles(ax=ax)
-        if any([self.s1, self.s2, self.s3]):
+        if any(self.settings.sigmas):
             self.sigmas(ax=ax)
-        if self.select_hist:
+        if self.settings.histogram:
             self.histogram(ax=ax)
 
     def set_legend(self, ax):
@@ -269,35 +271,38 @@ class Figure(object):
                            ncol=3)
         legend.get_frame().set_edgecolor("#525252")
 
+    def empty_figure(self):
+        fig, ax = self.setup_figure('single')
+        ax.text(0.1, 0.5, 'Tabula rasa', va='center', fontsize=20)
+        ax.spines['left'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.set_yticklabels([])
+        ax.set_yticks([])
+        ax.set_xticklabels([])
+        ax.set_xticks([])
+        return fig
+
     def figure_display_control(self):
         plt.rcParams.update(self.global_rc_params)
+        s = self.settings
 
-        if self.select_boxplot:
+        if not s.has_curves and not s.boxplot:
+            return self.empty_figure()
+
+        if not s.has_curves:
+            fig, ax = self.setup_figure('single')
+            self.boxplot(ax=ax)
+        elif s.boxplot:
             fig, ax = self.setup_figure('dual')
             self.plot_lines(ax[0])
             self.set_legend(ax[0])
-
-            if not any([self.select_cdf, self.select_pdf, self.select_hist, self.select_sf]):
-                fig, ax = self.setup_figure('single')
-                self.boxplot(ax=ax)
-            else:
-                self.boxplot(ax=ax[1])
-                ax[1].set_xlim(ax[0].get_xlim())
-                ax[0].set_ylabel(self.ylabel)
+            self.boxplot(ax=ax[1])
+            ax[1].set_xlim(ax[0].get_xlim())
+            ax[0].set_ylabel(self.ylabel)
         else:
             fig, ax = self.setup_figure('single')
             self.plot_lines(ax)
             ax.set_xlabel(self.xlabel)
             ax.set_ylabel(self.ylabel)
             self.set_legend(ax)
-        if not any([self.select_cdf, self.select_pdf, self.select_hist, self.select_boxplot, self.select_sf]):
-            fig, ax = self.setup_figure('single')
-            ax.text(0.1, 0.5, 'Tabula rasa', va='center', fontsize=20)
-            ax.spines['left'].set_visible(False)
-            ax.spines['bottom'].set_visible(False)
-            ax.set_yticklabels([])
-            ax.set_yticks([])
-            ax.set_xticklabels([])
-            ax.set_xticks([])
-
         return fig

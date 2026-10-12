@@ -4,20 +4,21 @@ import pytest
 from UtilitySt import CodeGenerator
 
 
-@pytest.mark.parametrize('select_distribution, a, name', [
-    ('norm', '', ''),
-    ('alpha', 'a=3.57', 'a,'),
-    ('beta', 'a=2.31\nb=0.63', 'a, b,'),
+@pytest.mark.parametrize('name, parameters', [
+    ('norm', {'loc': 0.0, 'scale': 1.0}),
+    ('alpha', {'a': 3.57, 'loc': 0.0, 'scale': 1.0}),
+    ('beta', {'a': 2.31, 'b': 0.63, 'loc': -1.5, 'scale': 2.0}),
 ])
-def test_generated_script_runs(monkeypatch, select_distribution, a, name):
+def test_generated_script_runs(monkeypatch, name, parameters):
     monkeypatch.setattr(plt, 'show', lambda *args, **kwargs: None)
-    code = CodeGenerator(select_distribution=select_distribution, scale='scale=1.0', loc='loc=0.0',
-                         a=a, name=name).get_generated_code()
+    code = CodeGenerator(distribution=name, parameters=parameters).get_generated_code()
 
     assert not code.startswith((' ', '\n')), 'script must not be indented'
     namespace = {}
-    exec(compile(code, f'<generated {select_distribution}>', 'exec'), namespace)
+    exec(compile(code, f'<generated {name}>', 'exec'), namespace)
     plt.close('all')
 
     assert namespace['r'].shape == (400,)
     assert namespace['x'].shape == (400,)
+    for param, value in parameters.items():
+        assert namespace[param] == value

@@ -3,208 +3,132 @@
 Created on 29/12/2023
 Aauthor: D-one
 """
+from dataclasses import dataclass
+
 import requests
 import scipy.stats._distr_params  # noqa: F401 - значения параметров по умолчанию
 from bs4 import BeautifulSoup
 from scipy import stats
 
+DOCS_URL = 'https://scipy.github.io/devdocs/tutorial/stats/'
+
+
+@dataclass(frozen=True)
+class DistributionInfo:
+    """
+    Все, что приложение знает об одном распределении.
+    :param name: имя в scipy.stats, например 'alpha'
+    :param fullname: заголовок из документации, например 'Alpha Distribution'
+    :param url: страница распределения в документации SciPy
+    :param docstring: строка документации из scipy.stats
+    :param equation: формула в LaTeX из строки документации ('' если формулы нет)
+    :param parameters: значения по умолчанию, например {'a': 3.57, 'loc': 0.0, 'scale': 1.0}
+    """
+    name: str
+    fullname: str
+    url: str
+    docstring: str
+    equation: str
+    parameters: dict
+
+
+@dataclass(frozen=True)
+class _Kind:
+    """Отличия непрерывных распределений от дискретных."""
+    page: str
+    section_id: str
+    href_prefix: str
+    default_shapes: list
+    # параметры, общие для всех распределений этого вида (у дискретных нет scale)
+    common_parameters: dict
+
+
+_KINDS = {
+    'continuous': _Kind(page='continuous.html',
+                        section_id='continuous-distributions-in-scipy-stats',
+                        href_prefix='continuous_',
+                        default_shapes=stats._distr_params.distcont,
+                        common_parameters={'loc': 0.00, 'scale': 1.00}),
+    'discrete': _Kind(page='discrete.html',
+                      section_id='discrete-distributions-in-scipy-stats',
+                      href_prefix='discrete_',
+                      default_shapes=stats._distr_params.distdiscrete,
+                      common_parameters={'loc': 0.00}),
+}
+
 
 class DistributionParser:
     """
-    Класс DistributionParser предназначен для анализа и извлечения информации о статистических распределениях
-    из документации SciPy. BASE_URL и DISTRIBUTION_ID — это атрибуты класса, в которых хранится URL-адрес анализируемой
-    веб-страницы и идентификатор HTML раздела, содержащего дистрибутивы, соответственно.
-    Метод __init__ инициализирует экземпляр класса. Он извлекает HTML-содержимое веб-страницы с помощью метода _get_soup
-    и сохраняет его в self.soup. Затем он вызывает различные методы для извлечения различных фрагментов информации о
-    распределениях и сохраняет их в переменных экземпляра.
-     _fetch_distributions извлекает названия дистрибутивов с веб-страницы.
-     _fetch_distribution_hrefs извлекает hrefs (ссылки) дистрибутивов с веб-страницы.
-     _generate_distribution_urls генерирует полные URL-адреса для дистрибутивов, используя hrefs.
-     _fetch_distribution_docstrings извлекает строки документации дистрибутивов из модуля scipy.stats.
-     _extract_distribution_names извлекает имена дистрибутивов из hrefs.
-     _fetch_distribution_functions извлекает математические функции распределений из строк документации.
-     _fetch_distribution_parameters_names и _fetch_distribution_parameters извлекают имена и значения параметров
-     распределений соответственно.
-     _generate_distribution_dictionaries генерирует словари, которые сопоставляют имена дистрибутивов с различными
-    фрагментами информации о дистрибутивах.
-     Методы get_ возвращают соответствующие переменные экземпляра.
-    Этот класс можно использовать для программного доступа к подробной информации о непрерывных распределениях в
-    модуле scipy.stats.
+    Класс DistributionParser собирает информацию о статистических распределениях: список распределений, их названия
+    и ссылки берутся со страницы документации SciPy, а строки документации, формулы и параметры по умолчанию -
+    из установленного модуля scipy.stats.
+    Результат лежит в self.distributions: словарь {имя в scipy.stats: DistributionInfo} в порядке страницы.
+    Распределения, которых нет в установленной версии SciPy, пропускаются.
     """
 
-    def __init__(self, type_rv):
+    def __init__(self, type_rv='continuous'):
         """
         :param type_rv: continuous or discrete
         """
-        if type_rv == 'discrete':
-            self.BASE_URL = 'https://scipy.github.io/devdocs/tutorial/stats/discrete.html'
-            self.DISTRIBUTION_ID = "discrete-distributions-in-scipy-stats"
-        else:
-            self.BASE_URL = 'https://scipy.github.io/devdocs/tutorial/stats/continuous.html'
-            self.DISTRIBUTION_ID = "continuous-distributions-in-scipy-stats"
-        self.soup = self._get_soup()
-        self.distributions_and_hrefs = self._fetch_distributions_and_hrefs()
-        self.distributions = self._fetch_distributions()
-        self.names = self._extract_distribution_names()
-        self.urls = self._generate_distribution_urls()
-        self.docstrings = self._fetch_distribution_docstrings()
-        self.equations = self._fetch_distribution_functions()
-        self.parameters = self._fetch_distribution_parameters()
-        self.dictionaries = self._generate_distribution_dictionaries()
-        self.stat = self._fetch_dictionaries_stat()
+        self.kind = _KINDS['discrete' if type_rv == 'discrete' else 'continuous']
+        self.url = DOCS_URL + self.kind.page
+        self.distributions = self._parse(self._get_soup())
 
     def _get_soup(self):
         try:
-            response = requests.get(self.BASE_URL, timeout=30)
+            response = requests.get(self.url, timeout=30)
             response.raise_for_status()
         except requests.RequestException as e:
-            raise ConnectionError(f"Failed to get URL {self.BASE_URL}: {e}") from e
+            raise ConnectionError(f"Failed to get URL {self.url}: {e}") from e
         return BeautifulSoup(response.text, "html.parser")
 
-    def _is_continuous(self):
-        return self.DISTRIBUTION_ID == "continuous-distributions-in-scipy-stats"
-
-    def _name_from_href(self, href):
-        """
-        :return: 'continuous_alpha.html' -> 'alpha'
-        """
-        prefix = 'continuous_' if self._is_continuous() else 'discrete_'
-        return href.replace(prefix, '').replace('.html', '')
-
-    def _fetch_distributions_and_hrefs(self):
-        """
-        :return: {'Alpha Distribution': 'continuous_alpha.html', 'Anglit Distribution': 'continuous_anglit.html',...}
-        """
-        div = self.soup.find(id=self.DISTRIBUTION_ID)
-        if div is None:
-            raise ValueError(f"Section '{self.DISTRIBUTION_ID}' not found on {self.BASE_URL}")
-        lis = div.find_all("li", {"class": "toctree-l1"})
-        distributions_and_hrefs = {}
-
-        for li in lis:
-            link = li.find(class_='reference internal', href=True)
-            if link and not link['href'].startswith('#'):
-                # Страница devdocs может описывать распределения, которых нет в установленной версии SciPy
-                if hasattr(stats, self._name_from_href(link['href'])):
-                    distributions_and_hrefs[li.text.strip()] = link['href']
-        return distributions_and_hrefs
-
-    def _fetch_distributions(self):
-        """
-        :return: ['Alpha Distribution', 'Anglit Distribution',...
-        """
-        return list(self.distributions_and_hrefs.keys())
-
-    def _extract_distribution_names(self):
-        """
-        :return: ['alpha', 'anglit', 'arcsine',...
-        """
-        return [self._name_from_href(href) for href in self.distributions_and_hrefs.values()]
-
-    def _generate_distribution_urls(self):
-        """
-        :return: ['https://scipy.github.io/devdocs/tutorial/stats/continuous_alpha.html',...
-        """
-        return [f'https://scipy.github.io/devdocs/tutorial/stats/{href}'
-                for href in self.distributions_and_hrefs.values()]
-
-    def _fetch_distribution_docstrings(self):
-        """
-        :return: info docs text...
-        """
-        return [getattr(stats, name).__doc__ or '' for name in self.names]
-
-    def _fetch_dictionaries_stat(self):
-        """
-        :return: ['stats.alpha', 'stats.anglit', 'stats.arcsine',...
-        """
-        return {name: 'stats.' + name for name in self.names}
-
-    def _fetch_distribution_functions(self):
-        """
-        Одно уравнение на распределение: первый блок math:: из строки документации ('' если блока нет).
-        :return: [f(x, a) = \\frac{1}{x^2 \\Phi(a) \\sqrt{2\\pi}},...
-        """
-        equations = []
-        for docstring in self.docstrings:
-            lines = docstring.split('\n')
-            equation = ''
-            for i, line in enumerate(lines):
-                if 'math::' in line:
-                    equation = ''.join(lines[i + 2:i + 4])
-                    break
-            equations.append(equation)
-        return equations
-
-    def _fetch_distribution_parameters(self):
-        """
-        :return: [['a', 'loc', 'scale'],...
-        :return: [[3.570477051665046, 0.0, 1.0], [0.0, 1.0],...
-        """
-        if self._is_continuous():
-            parse_params = stats._distr_params.distcont
-            # loc, scale
-            tail_names, tail_values = ['loc', 'scale'], [0.00, 1.00]
-        else:
-            parse_params = stats._distr_params.distdiscrete
-            # у дискретных распределений нет scale
-            tail_names, tail_values = ['loc'], [0.00]
+    def _parse(self, soup):
+        section = soup.find(id=self.kind.section_id)
+        if section is None:
+            raise ValueError(f"Section '{self.kind.section_id}' not found on {self.url}")
 
         default_shapes = {}
-        for dist_name, params in parse_params:
-            if isinstance(dist_name, str):
-                default_shapes.setdefault(dist_name, params)
+        for name, shapes in self.kind.default_shapes:
+            if isinstance(name, str):
+                default_shapes.setdefault(name, shapes)
 
-        all_params_names = []
-        all_params = []
-        for name in self.names:
-            dist = getattr(stats, name)
-            p_names = [sh.strip() for sh in dist.shapes.split(',')] if dist.shapes else []
-            all_params_names.append(p_names + tail_names)
-            all_params.append(list(default_shapes.get(name, ())) + tail_values)
-        return all_params_names, all_params
+        distributions = {}
+        for li in section.find_all("li", {"class": "toctree-l1"}):
+            link = li.find(class_='reference internal', href=True)
+            if not link or link['href'].startswith('#'):
+                continue
+            href = link['href']
+            name = href.replace(self.kind.href_prefix, '').replace('.html', '')
+            # Страница devdocs может описывать распределения, которых нет в установленной версии SciPy
+            if not hasattr(stats, name):
+                continue
+            docstring = getattr(stats, name).__doc__ or ''
+            distributions[name] = DistributionInfo(name=name,
+                                                   fullname=li.text.strip(),
+                                                   url=DOCS_URL + href,
+                                                   docstring=docstring,
+                                                   equation=self._extract_equation(docstring),
+                                                   parameters=self._default_parameters(name, default_shapes))
+        return distributions
 
-    def _generate_distribution_dictionaries(self):
+    @staticmethod
+    def _extract_equation(docstring):
         """
-        :return: all dictionaries
+        :return: первый блок math:: из строки документации, например f(x, a) = \\frac{1}{x^2 \\Phi(a) \\sqrt{2\\pi}}
         """
-        all_params_names, all_params = self.parameters
-        return {
-            'doc_dic': dict(zip(self.names, self.docstrings, strict=True)),
-            'functions_dic': dict(zip(self.names, self.equations, strict=True)),
-            'fullname_dic': dict(zip(self.names, self.distributions, strict=True)),
-            'parameters_dic': {
-                function: {param: f"{value:.2f}"
-                           for param, value in zip(all_params_names[i], all_params[i], strict=True)
-                           if isinstance(value, (int, float))}
-                for i, function in enumerate(self.names)},
-            'url_dic': {distribution: [url, fullname] for distribution, url, fullname in
-                        zip(self.names, self.urls, self.distributions, strict=True)}
-        }
+        lines = docstring.split('\n')
+        for i, line in enumerate(lines):
+            if 'math::' in line:
+                return ''.join(lines[i + 2:i + 4])
+        return ''
 
-    def get_distributions_and_hrefs(self):
-        return self.distributions_and_hrefs
-
-    def get_distributions(self):
-        return self.distributions
-
-    def get_distribution_names(self):
-        return self.names
-
-    def get_distribution_urls(self):
-        return self.urls
-
-    def get_distribution_docstrings(self):
-        return self.docstrings
-
-    def get_dictionaries_stat(self):
-        return self.stat
-
-    def get_distribution_functions(self):
-        return self.equations
-
-    def get_distribution_parameters(self):
-        return self.parameters
-
-    def get_dictionaries(self):
-        return self.dictionaries
+    def _default_parameters(self, name, default_shapes):
+        """
+        :return: {'a': 3.57, 'loc': 0.0, 'scale': 1.0} - параметры формы, затем общие параметры
+        """
+        dist = getattr(stats, name)
+        shape_names = [sh.strip() for sh in dist.shapes.split(',')] if dist.shapes else []
+        parameters = dict(zip(shape_names, default_shapes.get(name, ()), strict=False))
+        parameters.update(self.kind.common_parameters)
+        return {param: round(float(value), 2) for param, value in parameters.items()
+                if isinstance(value, (int, float))}
